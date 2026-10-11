@@ -35,7 +35,7 @@ python3 -m http.server 8000 --directory build/web
 
 Open `http://localhost:8000` in a browser. The web preset uses the Compatibility renderer and disables threads, so GitHub Pages does not need cross-origin isolation headers. The local web build was exported and clicked successfully in a desktop browser, including a 390×844 viewport check. A real iPhone Safari test is still needed.
 
-On each push to `main`, GitHub Actions imports the project, runs tests, exports Web, uploads the build artifact, and deploys it to GitHub Pages. Pull requests validate and build without deploying. To activate the phone preview, create a GitHub repository for **this directory**, push `main`, and set **Settings → Pages → Build and deployment → Source: GitHub Actions**. The Pages URL will appear on the deployment job. No repository or Pages deployment is connected yet.
+The [public GitHub repository](https://github.com/jonathanscholl/battleship-explorer) is connected, and Pages is configured to use GitHub Actions. On each push to `main`, Actions imports the project, runs tests, exports Web, uploads the build artifact, and deploys it. Pull requests validate and build without deploying. The phone preview is at [jonathanscholl.github.io/battleship-explorer](https://jonathanscholl.github.io/battleship-explorer/) once the first deployment succeeds.
 
 ## Layout and rendering
 
