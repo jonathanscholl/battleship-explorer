@@ -68,7 +68,8 @@ func _run() -> void:
 		quit(1)
 		return
 	screen.call("_buy", UpgradeState.Kind.DAMAGE)
-	if battle.player_upgrades.damage_level != 2 or damage_button.text.find("DAMAGE 2") < 0:
+	var next_damage_cost := battle.player_upgrades.next_cost(UpgradeState.Kind.DAMAGE)
+	if battle.player_upgrades.damage_level != 2 or damage_button.text.find("DAMAGE") < 0 or damage_button.text.find("%d GOLD" % next_damage_cost) < 0:
 		push_error("Damage button did not purchase or update")
 		quit(1)
 		return

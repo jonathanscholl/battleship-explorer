@@ -1,23 +1,22 @@
 extends Control
 
-const OCEAN := Color("198ca4")
-const DEEP := Color("17667f")
-const HIDDEN := Color("255e79")
 const FOAM := Color("a5e7da")
 const SAND := Color("f7dca1")
-const WOOD := Color("ab694a")
 const DAMAGE := Color("f47e71")
 const GOLD := Color("ffd166")
-const LEAF := Color("65c77a")
-const HIDDEN_TILE := preload("res://assets/sprites/water_hidden.svg")
-const WATER_TILE := preload("res://assets/sprites/water_revealed.svg")
-const SHIP_SPRITE := preload("res://assets/sprites/ship.png")
 const ISLAND_SPRITE := preload("res://assets/sprites/island.png")
 const TREASURE_SPRITE := preload("res://assets/sprites/treasure.png")
 const DESTROYED_SPRITE := preload("res://assets/sprites/destroyed.svg")
-const TARGET_SPRITE := preload("res://assets/sprites/target.svg")
-const CANNON_SPRITE := preload("res://assets/sprites/cannon.svg")
 const COIN_SPRITE := preload("res://assets/sprites/coin.svg")
+const OCEAN_BACKGROUND := preload("res://assets/backgrounds/ocean_adventure.png")
+const SHIP_V2 := preload("res://assets/sprites/ship-v2.png")
+const CANNONBALL_ICON := preload("res://assets/sprites/cannonball.svg")
+const STOPWATCH_ICON := preload("res://assets/sprites/stopwatch.svg")
+const REPAIR_ICON := preload("res://assets/sprites/repair.svg")
+const INK := Color("1b253f")
+const PLANK := Color("754329")
+const PLANK_LIGHT := Color("b7783e")
+const CYAN := Color("40eaff")
 
 var battle: BattleModel
 var catalog: LevelCatalog
@@ -42,11 +41,13 @@ var speed_button: Button
 var repair_button: Button
 var result_overlay: ColorRect
 var result_label: Label
+var result_logo: TextureRect
 var retry_button: Button
 var next_button: Button
 var select_button: Button
 var level_overlay: ColorRect
 var level_buttons: Array[Button] = []
+var level_logo: TextureRect
 var audio: GameAudio
 var effects: BattleEffects
 var settings_button: Button
@@ -70,28 +71,35 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	audio = GameAudio.new()
 	add_child(audio)
-	for texture in [SHIP_SPRITE, ISLAND_SPRITE, TREASURE_SPRITE]:
+	for texture in [SHIP_V2, ISLAND_SPRITE, TREASURE_SPRITE]:
 		sprite_regions[texture] = texture.get_image().get_used_rect()
-	enemy_label = _make_label("ENEMY  15 / 15", 17, SAND, HORIZONTAL_ALIGNMENT_LEFT)
-	level_label = _make_label("", 14, FOAM, HORIZONTAL_ALIGNMENT_LEFT)
-	coin_label = _make_label("0 COINS", 16, GOLD, HORIZONTAL_ALIGNMENT_RIGHT)
-	player_label = _make_label("YOUR SHIP  15 / 15", 17, FOAM, HORIZONTAL_ALIGNMENT_LEFT)
-	hint_label = _make_label("Tap hidden waters to explore", 16, SAND, HORIZONTAL_ALIGNMENT_CENTER)
-	view_label = _make_label("ENEMY WATERS", 15, FOAM, HORIZONTAL_ALIGNMENT_LEFT)
-	preview_button = _make_button("SWAP VIEW", _switch_view)
+	enemy_label = _make_label("", 17, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	level_label = _make_label("", 16, INK, HORIZONTAL_ALIGNMENT_CENTER)
+	coin_label = _make_label("", 22, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT)
+	player_label = _make_label("", 18, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	hint_label = _make_label("Tap hidden waters to explore", 15, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	view_label = _make_label("ENEMY WATERS", 19, INK, HORIZONTAL_ALIGNMENT_CENTER)
+	preview_button = _make_button("<>", _switch_view)
 	restart_button = _make_button("RESTART", _restart)
 	levels_button = _make_button("LEVELS", _open_level_select)
 	settings_button = _make_button("AUDIO", _open_settings)
 	damage_button = _make_button("DAMAGE", _buy.bind(UpgradeState.Kind.DAMAGE))
 	speed_button = _make_button("SPEED", _buy.bind(UpgradeState.Kind.SPEED))
 	repair_button = _make_button("REPAIR", _buy.bind(UpgradeState.Kind.REPAIR))
-	for button in [damage_button, speed_button, repair_button]:
-		button.add_theme_font_size_override("font_size", 13)
+	_style_button(preview_button, Color("d38b31"), 23)
+	for button in [restart_button, levels_button, settings_button]:
+		_style_button(button, Color("754329"), 12)
+	_style_button(damage_button, Color("e94845"), 14)
+	_style_button(speed_button, Color("8a4bdc"), 14)
+	_style_button(repair_button, Color("52ae3b"), 14)
+	damage_button.icon = CANNONBALL_ICON
+	speed_button.icon = STOPWATCH_ICON
+	repair_button.icon = REPAIR_ICON
 	effects = BattleEffects.new()
 	add_child(effects)
 	effects.impact_landed.connect(func() -> void: audio.play_sound("impact"))
 	result_overlay = ColorRect.new()
-	result_overlay.color = Color(0.03, 0.16, 0.22, 0.90)
+	result_overlay.color = Color(0.03, 0.12, 0.20, 0.86)
 	result_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	result_overlay.visible = false
 	add_child(result_overlay)
@@ -99,13 +107,19 @@ func _ready() -> void:
 	retry_button = _make_button("RETRY", _restart, result_overlay)
 	next_button = _make_button("NEXT LEVEL", _next_level, result_overlay)
 	select_button = _make_button("LEVEL SELECT", _open_level_select, result_overlay)
+	for button in [retry_button, next_button, select_button]:
+		_style_button(button, PLANK_LIGHT, 17)
+	result_logo = _make_logo(result_overlay)
 	level_overlay = ColorRect.new()
-	level_overlay.color = Color(0.03, 0.16, 0.22, 0.97)
+	level_overlay.color = Color(0.03, 0.13, 0.21, 0.86)
 	level_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(level_overlay)
 	_make_label("CHOOSE A LEVEL", 28, SAND, HORIZONTAL_ALIGNMENT_CENTER, level_overlay)
 	for index in catalog.levels.size():
-		level_buttons.append(_make_button("", _start_level.bind(index), level_overlay))
+		var level_button := _make_button("", _start_level.bind(index), level_overlay)
+		_style_button(level_button, PLANK_LIGHT, 17)
+		level_buttons.append(level_button)
+	level_logo = _make_logo(level_overlay)
 	settings_overlay = ColorRect.new()
 	settings_overlay.color = Color(0.03, 0.16, 0.22, 0.97)
 	settings_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -116,7 +130,8 @@ func _ready() -> void:
 	_make_label("SOUND EFFECTS", 17, FOAM, HORIZONTAL_ALIGNMENT_LEFT, settings_overlay)
 	music_slider = _make_slider(audio.music_volume, audio.set_music_volume)
 	sound_slider = _make_slider(audio.sound_volume, audio.set_sound_volume)
-	_make_button("DONE", _close_settings, settings_overlay)
+	var done_button := _make_button("DONE", _close_settings, settings_overlay)
+	_style_button(done_button, PLANK_LIGHT, 17)
 	battle.set_paused(true)
 	resized.connect(_update_layout)
 	_update_layout()
@@ -141,6 +156,26 @@ func _make_button(caption: String, callback: Callable, parent: Node = self) -> B
 	parent.add_child(button)
 	return button
 
+func _style_button(button: Button, fill: Color, font_size: int) -> void:
+	button.add_theme_font_size_override("font_size", font_size)
+	button.add_theme_color_override("font_color", Color.WHITE)
+	button.add_theme_color_override("font_hover_color", Color.WHITE)
+	button.add_theme_color_override("font_pressed_color", Color.WHITE)
+	button.add_theme_color_override("font_disabled_color", Color("d1d9d9"))
+	button.add_theme_color_override("font_outline_color", INK)
+	button.add_theme_constant_override("outline_size", 2)
+	for state in ["normal", "hover", "pressed", "disabled"]:
+		var style := StyleBoxFlat.new()
+		style.bg_color = fill.darkened(0.24 if state == "pressed" else 0.40 if state == "disabled" else 0.0)
+		style.border_color = INK
+		style.set_border_width_all(3)
+		style.set_corner_radius_all(5)
+		style.shadow_color = Color(0.02, 0.10, 0.14, 0.7)
+		style.shadow_size = 3
+		if state == "hover":
+			style.bg_color = fill.lightened(0.12)
+		button.add_theme_stylebox_override(state, style)
+
 func _make_slider(value: float, callback: Callable) -> HSlider:
 	var slider := HSlider.new()
 	slider.min_value = 0.0
@@ -151,54 +186,63 @@ func _make_slider(value: float, callback: Callable) -> HSlider:
 	settings_overlay.add_child(slider)
 	return slider
 
+func _make_logo(parent: Node) -> TextureRect:
+	var logo := TextureRect.new()
+	logo.texture = SHIP_V2
+	logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(logo)
+	return logo
+
 func _update_layout() -> void:
 	if battle == null or enemy_label == null:
 		return
 	var width := size.x
 	var height := size.y
-	var top := maxf(42.0, height * 0.055)
-	var bottom := maxf(38.0, height * 0.045)
-	var preview_size := floorf(minf(96.0, width * 0.25))
-	preview_rect = Rect2(Vector2(width - preview_size - 16, top + 82), Vector2.ONE * preview_size)
-	enemy_label.position = Vector2(16, top)
-	enemy_label.size = Vector2(width - preview_size - 44, 28)
-	level_label.position = Vector2(16, top + 100)
-	level_label.size = Vector2(width - preview_size - 44, 23)
-	coin_label.position = Vector2(width - 120, top)
-	coin_label.size = Vector2(104, 28)
-	restart_button.position = Vector2(16, top + 52)
-	restart_button.size = Vector2(96, 36)
-	levels_button.position = Vector2(118, top + 52)
-	levels_button.size = Vector2(90, 36)
-	settings_button.position = Vector2(16, top + 151)
-	settings_button.size = Vector2(82, 31)
-	preview_button.position = Vector2(preview_rect.position.x, top + 42)
-	preview_button.size = Vector2(preview_size, 36)
-	var main_top := preview_rect.end.y + 12
-	var main_bottom := height - bottom - 160
+	var preview_size := floorf(minf(200.0, width * 0.30))
+	preview_rect = Rect2(Vector2(width - preview_size - 15, 118), Vector2.ONE * preview_size)
+	enemy_label.position = Vector2(106, 28)
+	enemy_label.size = Vector2(width - 235, 24)
+	coin_label.position = Vector2(width - 90, 36)
+	coin_label.size = Vector2(73, 30)
+	level_label.position = Vector2(16, 85)
+	level_label.size = Vector2(width - preview_size - 38, 25)
+	restart_button.position = Vector2(18, 122)
+	restart_button.size = Vector2(103, 31)
+	levels_button.position = Vector2(18, 160)
+	levels_button.size = Vector2(103, 31)
+	settings_button.position = Vector2(18, 198)
+	settings_button.size = Vector2(103, 31)
+	preview_button.position = Vector2(preview_rect.position.x - 47, 160)
+	preview_button.size = Vector2(39, 42)
+	var main_top := maxf(preview_rect.end.y + 45, height * 0.31)
+	var main_bottom := height - 198
 	var available := maxf(180.0, main_bottom - main_top)
-	var grid_px := maxf(180.0, minf(width - 28, available))
+	var grid_px := maxf(180.0, minf(width - 34, available))
 	cell_size = floorf(grid_px / battle.enemy_grid.grid_size)
 	grid_px = cell_size * battle.enemy_grid.grid_size
 	grid_rect = Rect2(Vector2(floorf((width - grid_px) / 2.0), floorf(main_top + (available - grid_px) / 2.0)), Vector2.ONE * grid_px)
-	view_label.position = Vector2(grid_rect.position.x, grid_rect.position.y - 27)
-	view_label.size = Vector2(grid_px, 24)
-	player_label.position = Vector2(16, height - bottom - 136)
-	player_label.size = Vector2(width - 32, 28)
-	hint_label.position = Vector2(16, height - bottom - 105)
-	hint_label.size = Vector2(width - 32, 30)
-	var button_width := (width - 44) / 3.0
-	var button_y := height - bottom - 62
-	damage_button.position = Vector2(16, button_y)
-	damage_button.size = Vector2(button_width, 56)
-	speed_button.position = Vector2(22 + button_width, button_y)
-	speed_button.size = Vector2(button_width, 56)
+	view_label.position = Vector2((width - 210) / 2.0, grid_rect.position.y - 38)
+	view_label.size = Vector2(210, 31)
+	hint_label.position = Vector2(12, height - 194)
+	hint_label.size = Vector2(width - 24, 24)
+	player_label.position = Vector2(106, height - 154)
+	player_label.size = Vector2(width - 125, 28)
+	var button_width := (width - 40) / 3.0
+	var button_y := height - 99
+	damage_button.position = Vector2(12, button_y)
+	damage_button.size = Vector2(button_width, 78)
+	speed_button.position = Vector2(20 + button_width, button_y)
+	speed_button.size = Vector2(button_width, 78)
 	repair_button.position = Vector2(28 + button_width * 2.0, button_y)
-	repair_button.size = Vector2(button_width, 56)
+	repair_button.size = Vector2(button_width, 78)
 	result_overlay.position = Vector2.ZERO
 	result_overlay.size = size
 	result_label.position = Vector2(16, height * 0.39)
 	result_label.size = Vector2(width - 32, 48)
+	result_logo.position = Vector2((width - 136) / 2.0, height * 0.18)
+	result_logo.size = Vector2(136, 136)
 	for index in 3:
 		var button: Button = [next_button, retry_button, select_button][index]
 		button.position = Vector2((width - 208) / 2.0, height * 0.48 + index * 66)
@@ -208,6 +252,8 @@ func _update_layout() -> void:
 	var menu_title: Label = level_overlay.get_child(0)
 	menu_title.position = Vector2(16, height * 0.22)
 	menu_title.size = Vector2(width - 32, 48)
+	level_logo.position = Vector2((width - 144) / 2.0, height * 0.045)
+	level_logo.size = Vector2(144, 144)
 	for index in level_buttons.size():
 		level_buttons[index].position = Vector2(28, height * 0.35 + index * 76)
 		level_buttons[index].size = Vector2(width - 56, 60)
@@ -412,43 +458,78 @@ func _cell_center(by_player: bool, cell: Vector2i) -> Vector2:
 func _update_hud() -> void:
 	if enemy_label == null:
 		return
-	enemy_label.text = "ENEMY  %d / %d" % [battle.enemy_grid.ship.get_total_hp(), battle.enemy_grid.ship.get_max_hp()]
-	player_label.text = "YOUR SHIP  %d / %d" % [battle.player_grid.ship.get_total_hp(), battle.player_grid.ship.get_max_hp()]
-	coin_label.text = "%d COINS" % battle.player_upgrades.coins
+	enemy_label.text = "%d/%d" % [battle.enemy_grid.ship.get_total_hp(), battle.enemy_grid.ship.get_max_hp()]
+	player_label.text = "%d/%d" % [battle.player_grid.ship.get_total_hp(), battle.player_grid.ship.get_max_hp()]
+	coin_label.text = "%d" % battle.player_upgrades.coins
 	level_label.text = current_level.title.to_upper()
 	var upgrades := battle.player_upgrades
 	var running := battle.state == BattleModel.State.RUNNING and not battle.paused
 	var damage_cost := upgrades.next_cost(UpgradeState.Kind.DAMAGE)
 	var speed_cost := upgrades.next_cost(UpgradeState.Kind.SPEED)
-	damage_button.text = "DAMAGE %d\n%s" % [upgrades.damage_level, "MAX" if damage_cost < 0 else "%d COINS" % damage_cost]
-	speed_button.text = "SPEED %.1fs\n%s" % [battle.player_cannon.interval, "MAX" if speed_cost < 0 else "%d COINS" % speed_cost]
-	repair_button.text = "REPAIR +%d\n%d COINS" % [battle.rules.repair_hp, upgrades.next_cost(UpgradeState.Kind.REPAIR)]
+	damage_button.text = "DAMAGE +\n%s" % ["MAX" if damage_cost < 0 else "%d GOLD" % damage_cost]
+	speed_button.text = "SPEED +\n%s" % ["MAX" if speed_cost < 0 else "%d GOLD" % speed_cost]
+	repair_button.text = "REPAIR\n%d GOLD" % upgrades.next_cost(UpgradeState.Kind.REPAIR)
 	damage_button.disabled = not upgrades.can_purchase(UpgradeState.Kind.DAMAGE, running)
 	speed_button.disabled = not upgrades.can_purchase(UpgradeState.Kind.SPEED, running)
 	repair_button.disabled = not upgrades.can_purchase(UpgradeState.Kind.REPAIR, running)
 
 func _draw() -> void:
-	draw_rect(Rect2(Vector2.ZERO, size), Color("123e53"))
-	draw_rect(Rect2(Vector2(5, 5), size - Vector2(10, 10)), Color("3b7180"), false, 2.0)
+	draw_texture_rect(OCEAN_BACKGROUND, Rect2(Vector2.ZERO, size), false)
 	if battle == null or cell_size <= 0.0:
 		return
-	draw_texture_rect(COIN_SPRITE, Rect2(Vector2(size.x - 143, coin_label.position.y + 5), Vector2(18, 18)), false)
-	draw_texture_rect(CANNON_SPRITE, Rect2(Vector2(grid_rect.end.x - 28, view_label.position.y), Vector2(24, 24)), false)
-	_draw_hp_bar(Vector2(16, enemy_label.position.y + 31), size.x - preview_rect.size.x - 44, battle.enemy_grid.ship.get_total_hp(), battle.enemy_grid.ship.get_max_hp(), DAMAGE)
-	_draw_hp_bar(Vector2(16, player_label.position.y - 8), size.x - 32, battle.player_grid.ship.get_total_hp(), battle.player_grid.ship.get_max_hp(), FOAM)
+	_draw_wood_panel(Rect2(13, 21, size.x - 142, 57))
+	_draw_wood_panel(Rect2(size.x - 119, 21, 106, 57))
+	_draw_sprite(SHIP_V2, Rect2(12, 2, 88, 88))
+	_draw_heart(Vector2(113, 62), 11)
+	_draw_hp_bar(Vector2(135, 57), size.x - 290, battle.enemy_grid.ship.get_total_hp(), battle.enemy_grid.ship.get_max_hp(), Color("f45351"))
+	draw_texture_rect(COIN_SPRITE, Rect2(size.x - 111, 34, 29, 29), false)
+	_draw_wood_panel(Rect2(14, 84, size.x - preview_rect.size.x - 41, 28), true)
+	_draw_wood_panel(Rect2(preview_rect.position.x - 5, preview_rect.position.y - 30, preview_rect.size.x + 10, 27), true)
+	draw_string(ThemeDB.fallback_font, Vector2(preview_rect.position.x, preview_rect.position.y - 9), "YOUR WATERS" if showing_enemy else "ENEMY WATERS", HORIZONTAL_ALIGNMENT_CENTER, preview_rect.size.x, 12, INK)
+	_draw_wood_panel(Rect2(view_label.position.x - 8, view_label.position.y - 2, view_label.size.x + 16, 32), true)
+	_draw_grid_frame(grid_rect, false)
 	_draw_grid(grid_rect, showing_enemy)
+	_draw_grid_frame(preview_rect, true)
 	_draw_grid(preview_rect, not showing_enemy)
+	draw_rect(Rect2(20, hint_label.position.y - 1, size.x - 40, 24), Color(0.02, 0.19, 0.30, 0.70))
+	_draw_wood_panel(Rect2(13, size.y - 167, size.x - 26, 60))
+	_draw_sprite(SHIP_V2, Rect2(13, size.y - 185, 90, 90))
+	_draw_heart(Vector2(114, size.y - 127), 11)
+	_draw_hp_bar(Vector2(137, size.y - 135), size.x - 230, battle.player_grid.ship.get_total_hp(), battle.player_grid.ship.get_max_hp(), Color("6de94a"))
+
+func _draw_wood_panel(rect: Rect2, parchment: bool = false) -> void:
+	draw_rect(rect.grow(3), INK)
+	draw_rect(rect, Color("e9bb71") if parchment else PLANK)
+	draw_rect(Rect2(rect.position + Vector2(3, 3), Vector2(rect.size.x - 6, 3)), Color("ffe2a0") if parchment else PLANK_LIGHT)
+	draw_rect(rect.grow(-2), Color("71432b"), false, 2)
+	for x in [rect.position.x + 8, rect.end.x - 12]:
+		draw_circle(Vector2(x, rect.position.y + 12), 2.0, Color("5b332b"))
+
+func _draw_heart(center: Vector2, radius: float) -> void:
+	var red := Color("ff5d58")
+	draw_circle(center + Vector2(-radius * 0.45, -radius * 0.25), radius * 0.52, INK)
+	draw_circle(center + Vector2(radius * 0.45, -radius * 0.25), radius * 0.52, INK)
+	draw_colored_polygon(PackedVector2Array([center + Vector2(-radius, -radius * 0.1), center + Vector2(radius, -radius * 0.1), center + Vector2(0, radius)]), INK)
+	draw_circle(center + Vector2(-radius * 0.42, -radius * 0.25), radius * 0.38, red)
+	draw_circle(center + Vector2(radius * 0.42, -radius * 0.25), radius * 0.38, red)
+	draw_colored_polygon(PackedVector2Array([center + Vector2(-radius * 0.78, -radius * 0.1), center + Vector2(radius * 0.78, -radius * 0.1), center + Vector2(0, radius * 0.75)]), red)
+
+func _draw_grid_frame(area: Rect2, small: bool) -> void:
+	draw_rect(area.grow(12 if not small else 8), Color("102f50"))
+	draw_rect(area.grow(8 if not small else 5), Color("047eae"))
+	draw_rect(area.grow(5 if not small else 3), CYAN, false, 2.0)
 
 func _draw_hp_bar(at: Vector2, width: float, hp: int, maximum: int, fill: Color) -> void:
-	draw_rect(Rect2(at, Vector2(width, 7)), DEEP)
+	draw_rect(Rect2(at, Vector2(width, 18)), INK)
 	if maximum > 0:
-		draw_rect(Rect2(at, Vector2(width * float(hp) / maximum, 7)), fill)
+		draw_rect(Rect2(at + Vector2(3, 3), Vector2((width - 6) * float(hp) / maximum, 12)), fill)
+		draw_rect(Rect2(at + Vector2(3, 3), Vector2((width - 6) * float(hp) / maximum, 3)), fill.lightened(0.35))
 
 func _draw_grid(area: Rect2, enemy_waters: bool) -> void:
 	var knowledge := battle.player_knowledge if enemy_waters else battle.enemy_knowledge
 	var own_grid := battle.enemy_grid if enemy_waters else battle.player_grid
 	var tile := area.size.x / knowledge.grid_size
-	draw_rect(area.grow(4), DEEP)
+	draw_rect(area, Color("0b6593"))
 	for y in knowledge.grid_size:
 		for x in knowledge.grid_size:
 			var cell := Vector2i(x, y)
@@ -456,30 +537,45 @@ func _draw_grid(area: Rect2, enemy_waters: bool) -> void:
 			var inset := 2.0 if area == grid_rect else 1.0
 			var kind := knowledge.visible_kind(cell)
 			var own_ship := not enemy_waters and own_grid.ship.has_section(cell)
-			draw_texture_rect(HIDDEN_TILE if kind == GridModel.TileKind.HIDDEN and not own_ship else WATER_TILE, rect.grow(-inset), false)
+			var hidden := kind == GridModel.TileKind.HIDDEN and not own_ship
+			draw_rect(rect.grow(-inset), Color("07517f") if hidden else Color("0c9bce"))
+			draw_rect(rect.grow(-inset - 1), Color("54eaff"), false, 1.5 if area == grid_rect else 0.7)
+			if hidden and area == grid_rect:
+				draw_rect(Rect2(rect.position + Vector2(tile * 0.12, tile * 0.16), Vector2(tile * 0.30, 2)), Color("146c99"))
+				draw_rect(Rect2(rect.position + Vector2(tile * 0.62, tile * 0.75), Vector2(tile * 0.20, 2)), Color("146c99"))
+			if not hidden:
+				draw_rect(Rect2(rect.position + Vector2(tile * 0.11, tile * 0.12), Vector2(tile * 0.72, 2)), Color("60dfff", 0.45))
 			if kind == GridModel.TileKind.HIDDEN and not own_ship:
 				if area == grid_rect:
-					draw_string(ThemeDB.fallback_font, rect.position + Vector2(tile * 0.40, tile * 0.68), "?", HORIZONTAL_ALIGNMENT_LEFT, -1, int(tile * 0.43), SAND)
+					draw_string(ThemeDB.fallback_font, rect.position + Vector2(0, tile * 0.70), "?", HORIZONTAL_ALIGNMENT_CENTER, tile, int(tile * 0.50), Color("76c3e1"))
+			elif kind == GridModel.TileKind.WATER:
+				draw_string(ThemeDB.fallback_font, rect.position + Vector2(0, tile * 0.75), "×", HORIZONTAL_ALIGNMENT_CENTER, tile, int(tile * 0.64), Color.WHITE)
 			elif kind == GridModel.TileKind.TREASURE:
-				_draw_sprite(TREASURE_SPRITE, rect.grow(-tile * 0.12))
+				_draw_sprite(TREASURE_SPRITE, rect.grow(-tile * 0.04))
 			elif kind == GridModel.TileKind.ISLAND:
-				_draw_sprite(ISLAND_SPRITE, rect.grow(-tile * 0.10))
+				_draw_sprite(ISLAND_SPRITE, rect.grow(-tile * 0.04))
 			elif kind == GridModel.TileKind.SHIP or own_ship:
 				var hp := knowledge.visible_section_hp(cell) if enemy_waters else own_grid.ship.get_section_hp(cell)
 				if hp <= 0:
 					draw_texture_rect(DESTROYED_SPRITE, rect.grow(-tile * 0.1), false)
 				else:
 					var wave := sin(float(Time.get_ticks_msec()) * 0.002 + float(x + y)) * 0.7 if area == grid_rect else 0.0
-					var ship_rect := rect.grow(-tile * 0.08)
+					var ship_rect := rect.grow(-tile * 0.015)
 					ship_rect.position.y += wave
-					_draw_sprite(SHIP_SPRITE, ship_rect, Color("d7fff4") if own_ship else Color.WHITE)
+					_draw_sprite(SHIP_V2, ship_rect, Color("d7fff4") if own_ship else Color.WHITE)
 				if area == grid_rect:
 					draw_rect(Rect2(rect.position + Vector2(tile * 0.16, tile * 0.88), Vector2(tile * 0.68 * float(hp) / own_grid.ship.section_max_hp, 3)), FOAM if hp > 0 else DAMAGE)
 				if own_ship and knowledge.is_revealed(cell):
 					draw_rect(rect.grow(-3), DAMAGE, false, 2.0)
 			if enemy_waters and battle.player_cannon.target == cell and area == grid_rect:
 				var pulse := 0.72 + sin(float(Time.get_ticks_msec()) * 0.008) * 0.28
-				draw_texture_rect(TARGET_SPRITE, rect.grow(-2), false, Color(1, 1, 1, pulse))
+				var corner := tile * 0.20
+				for px in [rect.position.x + 3, rect.end.x - 3]:
+					for py in [rect.position.y + 3, rect.end.y - 3]:
+						var direction_x := 1.0 if px < rect.get_center().x else -1.0
+						var direction_y := 1.0 if py < rect.get_center().y else -1.0
+						draw_line(Vector2(px, py), Vector2(px + direction_x * corner, py), Color(1, 0.18, 0.12, pulse), 4)
+						draw_line(Vector2(px, py), Vector2(px, py + direction_y * corner), Color(1, 0.18, 0.12, pulse), 4)
 
 func _draw_sprite(texture: Texture2D, destination: Rect2, tint: Color = Color.WHITE) -> void:
 	draw_texture_rect_region(texture, destination, sprite_regions[texture], tint)
