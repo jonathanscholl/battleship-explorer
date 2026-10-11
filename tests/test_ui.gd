@@ -19,6 +19,18 @@ func _run() -> void:
 		push_error("Level 1 did not start")
 		quit(1)
 		return
+	var pause_overlay: ColorRect = screen.get("pause_overlay")
+	var menu_button: Button = screen.get("menu_button")
+	menu_button.pressed.emit()
+	if not pause_overlay.visible or not screen.get("battle").paused:
+		push_error("Menu did not pause battle")
+		quit(1)
+		return
+	screen.get("resume_button").pressed.emit()
+	if pause_overlay.visible or screen.get("battle").paused:
+		push_error("Resume did not restore battle")
+		quit(1)
+		return
 	var tap := InputEventScreenTouch.new()
 	tap.pressed = true
 	var grid_rect: Rect2 = screen.get("grid_rect")

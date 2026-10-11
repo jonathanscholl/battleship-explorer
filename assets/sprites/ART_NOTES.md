@@ -12,9 +12,13 @@ The transparent `ship.png`, `island.png`, and `treasure.png` were created with t
 
 The SVG files are editable source assets for water states, target, destroyed section, cannon, cannonball, coin, splash, and impact. `assets/audio/generate_audio.py` is the source for the small original WAV sound set and music loop.
 
+Interface text uses Pixelify Sans from the [Google Fonts repository](https://github.com/google/fonts/tree/main/ofl/pixelifysans), bundled at `assets/fonts/PixelifySans.ttf` under the SIL Open Font License in `assets/fonts/OFL.txt`.
+
 ## Tropical battle screen revision
 
 The current battle screen uses `assets/backgrounds/ocean_adventure.png` as a portrait scene and `ship-v2.png` for board tiles and HUD portraits. Both were created with the built-in image generation tool using the user's supplied screenshot as a **style reference**, then copied into the project. The screenshot itself is not shipped. The new colors favor bright cyan water, cobalt hidden tiles, dark ink outlines, warm wood frames, parchment labels, and red, purple, green upgrade cards. UI frames, tile highlights, target brackets, and health bars are code drawn in `scripts/ui/main_screen.gd`; the stopwatch and repair icons are editable SVGs.
+
+The second interface pass moved restart, level select, and audio into a Captain's Log pause panel. Purchase cards now use saturated code-drawn bevels, dedicated icon wells, and coin badges while their transparent Button nodes keep touch and disabled behavior. The board uses layered cyan tile bevels and pixel type; hidden positions remain visually identical.
 
 Final image prompts:
 

@@ -13,6 +13,7 @@ const SHIP_V2 := preload("res://assets/sprites/ship-v2.png")
 const CANNONBALL_ICON := preload("res://assets/sprites/cannonball.svg")
 const STOPWATCH_ICON := preload("res://assets/sprites/stopwatch.svg")
 const REPAIR_ICON := preload("res://assets/sprites/repair.svg")
+const PIXEL_FONT := preload("res://assets/fonts/PixelifySans.ttf")
 const INK := Color("1b253f")
 const PLANK := Color("754329")
 const PLANK_LIGHT := Color("b7783e")
@@ -51,6 +52,10 @@ var level_logo: TextureRect
 var audio: GameAudio
 var effects: BattleEffects
 var settings_button: Button
+var menu_button: Button
+var pause_overlay: ColorRect
+var resume_button: Button
+var pause_logo: TextureRect
 var settings_overlay: ColorRect
 var music_slider: HSlider
 var sound_slider: HSlider
@@ -73,31 +78,41 @@ func _ready() -> void:
 	add_child(audio)
 	for texture in [SHIP_V2, ISLAND_SPRITE, TREASURE_SPRITE]:
 		sprite_regions[texture] = texture.get_image().get_used_rect()
-	enemy_label = _make_label("", 17, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
-	level_label = _make_label("", 16, INK, HORIZONTAL_ALIGNMENT_CENTER)
-	coin_label = _make_label("", 22, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT)
-	player_label = _make_label("", 18, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
-	hint_label = _make_label("Tap hidden waters to explore", 15, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	view_label = _make_label("ENEMY WATERS", 19, INK, HORIZONTAL_ALIGNMENT_CENTER)
-	preview_button = _make_button("<>", _switch_view)
+	enemy_label = _make_label("", 20, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT)
+	level_label = _make_label("", 15, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	coin_label = _make_label("", 25, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT)
+	player_label = _make_label("", 20, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT)
+	hint_label = _make_label("Tap hidden waters to explore", 17, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	view_label = _make_label("ENEMY WATERS", 23, Color("372615"), HORIZONTAL_ALIGNMENT_CENTER)
+	preview_button = _make_button("SWAP", _switch_view)
+	menu_button = _make_button("MENU", _open_pause)
 	restart_button = _make_button("RESTART", _restart)
 	levels_button = _make_button("LEVELS", _open_level_select)
 	settings_button = _make_button("AUDIO", _open_settings)
 	damage_button = _make_button("DAMAGE", _buy.bind(UpgradeState.Kind.DAMAGE))
 	speed_button = _make_button("SPEED", _buy.bind(UpgradeState.Kind.SPEED))
 	repair_button = _make_button("REPAIR", _buy.bind(UpgradeState.Kind.REPAIR))
-	_style_button(preview_button, Color("d38b31"), 23)
+	_style_button(preview_button, Color("d38b31"), 13)
+	_style_button(menu_button, Color("754329"), 14)
 	for button in [restart_button, levels_button, settings_button]:
 		_style_button(button, Color("754329"), 12)
-	_style_button(damage_button, Color("e94845"), 14)
-	_style_button(speed_button, Color("8a4bdc"), 14)
-	_style_button(repair_button, Color("52ae3b"), 14)
-	damage_button.icon = CANNONBALL_ICON
-	speed_button.icon = STOPWATCH_ICON
-	repair_button.icon = REPAIR_ICON
+	for button in [damage_button, speed_button, repair_button]:
+		_style_upgrade_input(button)
 	effects = BattleEffects.new()
 	add_child(effects)
 	effects.impact_landed.connect(func() -> void: audio.play_sound("impact"))
+	pause_overlay = ColorRect.new()
+	pause_overlay.color = Color(0.02, 0.10, 0.18, 0.90)
+	pause_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	pause_overlay.visible = false
+	add_child(pause_overlay)
+	_make_label("CAPTAIN'S LOG", 30, SAND, HORIZONTAL_ALIGNMENT_CENTER, pause_overlay)
+	for button in [restart_button, levels_button, settings_button]:
+		button.reparent(pause_overlay)
+		_style_button(button, PLANK_LIGHT, 18)
+	resume_button = _make_button("RESUME", _close_pause, pause_overlay)
+	_style_button(resume_button, Color("3aaa63"), 18)
+	pause_logo = _make_logo(pause_overlay)
 	result_overlay = ColorRect.new()
 	result_overlay.color = Color(0.03, 0.12, 0.20, 0.86)
 	result_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -144,6 +159,7 @@ func _make_label(caption: String, font_size: int, color: Color, alignment: Horiz
 	label.horizontal_alignment = alignment
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.add_theme_font_size_override("font_size", font_size)
+	label.add_theme_font_override("font", PIXEL_FONT)
 	label.add_theme_color_override("font_color", color)
 	parent.add_child(label)
 	return label
@@ -152,6 +168,7 @@ func _make_button(caption: String, callback: Callable, parent: Node = self) -> B
 	var button := Button.new()
 	button.text = caption
 	button.add_theme_font_size_override("font_size", 14)
+	button.add_theme_font_override("font", PIXEL_FONT)
 	button.pressed.connect(callback)
 	parent.add_child(button)
 	return button
@@ -175,6 +192,13 @@ func _style_button(button: Button, fill: Color, font_size: int) -> void:
 		if state == "hover":
 			style.bg_color = fill.lightened(0.12)
 		button.add_theme_stylebox_override(state, style)
+
+func _style_upgrade_input(button: Button) -> void:
+	var empty := StyleBoxEmpty.new()
+	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
+		button.add_theme_stylebox_override(state, empty)
+	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_disabled_color"]:
+		button.add_theme_color_override(state, Color.TRANSPARENT)
 
 func _make_slider(value: float, callback: Callable) -> HSlider:
 	var slider := HSlider.new()
@@ -201,42 +225,49 @@ func _update_layout() -> void:
 	var width := size.x
 	var height := size.y
 	var preview_size := floorf(minf(200.0, width * 0.30))
-	preview_rect = Rect2(Vector2(width - preview_size - 15, 118), Vector2.ONE * preview_size)
-	enemy_label.position = Vector2(106, 28)
-	enemy_label.size = Vector2(width - 235, 24)
-	coin_label.position = Vector2(width - 90, 36)
-	coin_label.size = Vector2(73, 30)
-	level_label.position = Vector2(16, 85)
-	level_label.size = Vector2(width - preview_size - 38, 25)
-	restart_button.position = Vector2(18, 122)
-	restart_button.size = Vector2(103, 31)
-	levels_button.position = Vector2(18, 160)
-	levels_button.size = Vector2(103, 31)
-	settings_button.position = Vector2(18, 198)
-	settings_button.size = Vector2(103, 31)
-	preview_button.position = Vector2(preview_rect.position.x - 47, 160)
-	preview_button.size = Vector2(39, 42)
-	var main_top := maxf(preview_rect.end.y + 45, height * 0.31)
+	preview_rect = Rect2(Vector2(width - preview_size - 18, 129), Vector2.ONE * preview_size)
+	enemy_label.position = Vector2(width - 173, 39)
+	enemy_label.size = Vector2(35, 30)
+	coin_label.position = Vector2(width - 77, 46)
+	coin_label.size = Vector2(56, 32)
+	level_label.position = Vector2(19, 107)
+	level_label.size = Vector2(88, 25)
+	menu_button.position = Vector2(18, 143)
+	menu_button.size = Vector2(68, 37)
+	preview_button.position = Vector2(preview_rect.position.x - 59, 167)
+	preview_button.size = Vector2(51, 43)
+	var main_top := maxf(preview_rect.end.y + 55, height * 0.31)
 	var main_bottom := height - 198
 	var available := maxf(180.0, main_bottom - main_top)
-	var grid_px := maxf(180.0, minf(width - 34, available))
+	var grid_px := maxf(180.0, minf(width - 40, available))
 	cell_size = floorf(grid_px / battle.enemy_grid.grid_size)
 	grid_px = cell_size * battle.enemy_grid.grid_size
 	grid_rect = Rect2(Vector2(floorf((width - grid_px) / 2.0), floorf(main_top + (available - grid_px) / 2.0)), Vector2.ONE * grid_px)
-	view_label.position = Vector2((width - 210) / 2.0, grid_rect.position.y - 38)
-	view_label.size = Vector2(210, 31)
+	view_label.position = Vector2((width - 226) / 2.0, grid_rect.position.y - 38)
+	view_label.size = Vector2(226, 30)
 	hint_label.position = Vector2(12, height - 194)
 	hint_label.size = Vector2(width - 24, 24)
-	player_label.position = Vector2(106, height - 154)
-	player_label.size = Vector2(width - 125, 28)
-	var button_width := (width - 40) / 3.0
-	var button_y := height - 99
+	player_label.position = Vector2(width - 89, height - 143)
+	player_label.size = Vector2(69, 27)
+	var button_width := (width - 38) / 3.0
+	var button_y := height - 100
 	damage_button.position = Vector2(12, button_y)
-	damage_button.size = Vector2(button_width, 78)
-	speed_button.position = Vector2(20 + button_width, button_y)
-	speed_button.size = Vector2(button_width, 78)
-	repair_button.position = Vector2(28 + button_width * 2.0, button_y)
-	repair_button.size = Vector2(button_width, 78)
+	damage_button.size = Vector2(button_width, 79)
+	speed_button.position = Vector2(19 + button_width, button_y)
+	speed_button.size = Vector2(button_width, 79)
+	repair_button.position = Vector2(26 + button_width * 2.0, button_y)
+	repair_button.size = Vector2(button_width, 79)
+	pause_overlay.position = Vector2.ZERO
+	pause_overlay.size = size
+	var pause_title: Label = pause_overlay.get_child(0)
+	pause_title.position = Vector2(16, height * 0.225)
+	pause_title.size = Vector2(width - 32, 48)
+	pause_logo.position = Vector2((width - 148) / 2.0, height * 0.045)
+	pause_logo.size = Vector2(148, 148)
+	for index in 4:
+		var pause_button: Button = [resume_button, restart_button, levels_button, settings_button][index]
+		pause_button.position = Vector2(34, height * 0.34 + index * 72)
+		pause_button.size = Vector2(width - 68, 58)
 	result_overlay.position = Vector2.ZERO
 	result_overlay.size = size
 	result_label.position = Vector2(16, height * 0.39)
@@ -291,7 +322,7 @@ func _notification(what: int) -> void:
 		battle.set_paused(true)
 		_update_hud()
 	elif what == NOTIFICATION_APPLICATION_FOCUS_IN or what == NOTIFICATION_WM_WINDOW_FOCUS_IN:
-		battle.set_paused((level_overlay != null and level_overlay.visible) or (settings_overlay != null and settings_overlay.visible))
+		battle.set_paused((level_overlay != null and level_overlay.visible) or (settings_overlay != null and settings_overlay.visible) or (pause_overlay != null and pause_overlay.visible))
 		_update_hud()
 
 func _gui_input(event: InputEvent) -> void:
@@ -306,7 +337,7 @@ func _gui_input(event: InputEvent) -> void:
 		point = event.position
 	else:
 		return
-	if level_overlay.visible or result_overlay.visible or settings_overlay.visible:
+	if level_overlay.visible or result_overlay.visible or settings_overlay.visible or pause_overlay.visible:
 		return
 	audio.unlock()
 	if preview_rect.has_point(point):
@@ -343,6 +374,7 @@ func _restart() -> void:
 	result_overlay.visible = false
 	result_overlay.modulate.a = 1.0
 	level_overlay.visible = false
+	pause_overlay.visible = false
 	_update_layout()
 	_update_hud()
 	queue_redraw()
@@ -367,6 +399,7 @@ func _open_level_select() -> void:
 	effects.clear_effects()
 	battle.set_paused(true)
 	result_overlay.visible = false
+	pause_overlay.visible = false
 	level_overlay.visible = true
 	_update_level_buttons()
 	_update_hud()
@@ -374,7 +407,18 @@ func _open_level_select() -> void:
 func _open_settings() -> void:
 	audio.unlock()
 	battle.set_paused(true)
+	pause_overlay.visible = false
 	settings_overlay.visible = true
+	_update_hud()
+
+func _open_pause() -> void:
+	battle.set_paused(true)
+	pause_overlay.visible = true
+	_update_hud()
+
+func _close_pause() -> void:
+	pause_overlay.visible = false
+	battle.set_paused(false)
 	_update_hud()
 
 func _close_settings() -> void:
@@ -461,7 +505,7 @@ func _update_hud() -> void:
 	enemy_label.text = "%d/%d" % [battle.enemy_grid.ship.get_total_hp(), battle.enemy_grid.ship.get_max_hp()]
 	player_label.text = "%d/%d" % [battle.player_grid.ship.get_total_hp(), battle.player_grid.ship.get_max_hp()]
 	coin_label.text = "%d" % battle.player_upgrades.coins
-	level_label.text = current_level.title.to_upper()
+	level_label.text = "LEVEL %d" % (catalog.index_of(current_level.id) + 1)
 	var upgrades := battle.player_upgrades
 	var running := battle.state == BattleModel.State.RUNNING and not battle.paused
 	var damage_cost := upgrades.next_cost(UpgradeState.Kind.DAMAGE)
@@ -477,33 +521,62 @@ func _draw() -> void:
 	draw_texture_rect(OCEAN_BACKGROUND, Rect2(Vector2.ZERO, size), false)
 	if battle == null or cell_size <= 0.0:
 		return
-	_draw_wood_panel(Rect2(13, 21, size.x - 142, 57))
-	_draw_wood_panel(Rect2(size.x - 119, 21, 106, 57))
-	_draw_sprite(SHIP_V2, Rect2(12, 2, 88, 88))
-	_draw_heart(Vector2(113, 62), 11)
-	_draw_hp_bar(Vector2(135, 57), size.x - 290, battle.enemy_grid.ship.get_total_hp(), battle.enemy_grid.ship.get_max_hp(), Color("f45351"))
-	draw_texture_rect(COIN_SPRITE, Rect2(size.x - 111, 34, 29, 29), false)
-	_draw_wood_panel(Rect2(14, 84, size.x - preview_rect.size.x - 41, 28), true)
-	_draw_wood_panel(Rect2(preview_rect.position.x - 5, preview_rect.position.y - 30, preview_rect.size.x + 10, 27), true)
-	draw_string(ThemeDB.fallback_font, Vector2(preview_rect.position.x, preview_rect.position.y - 9), "YOUR WATERS" if showing_enemy else "ENEMY WATERS", HORIZONTAL_ALIGNMENT_CENTER, preview_rect.size.x, 12, INK)
-	_draw_wood_panel(Rect2(view_label.position.x - 8, view_label.position.y - 2, view_label.size.x + 16, 32), true)
+	_draw_wood_panel(Rect2(14, 21, size.x - 146, 75))
+	_draw_wood_panel(Rect2(size.x - 121, 21, 108, 75))
+	_draw_sprite(SHIP_V2, Rect2(10, 0, 99, 99))
+	draw_string(PIXEL_FONT, Vector2(106, 48), "ENEMY", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color("ffe3a1"))
+	_draw_heart(Vector2(113, 74), 11)
+	_draw_hp_bar(Vector2(133, 65), size.x - 308, battle.enemy_grid.ship.get_total_hp(), battle.enemy_grid.ship.get_max_hp(), Color("f34c4a"))
+	draw_texture_rect(COIN_SPRITE, Rect2(size.x - 112, 44, 32, 32), false)
+	_draw_wood_panel(Rect2(18, 106, 88, 26), true)
+	_draw_wood_panel(Rect2(preview_rect.position.x - 6, preview_rect.position.y - 31, preview_rect.size.x + 12, 28), true)
+	draw_string(PIXEL_FONT, Vector2(preview_rect.position.x, preview_rect.position.y - 10), "YOUR WATERS" if showing_enemy else "ENEMY WATERS", HORIZONTAL_ALIGNMENT_CENTER, preview_rect.size.x, 15, Color("372615"))
+	_draw_wood_panel(Rect2(view_label.position.x - 8, view_label.position.y - 4, view_label.size.x + 16, 34), true)
 	_draw_grid_frame(grid_rect, false)
 	_draw_grid(grid_rect, showing_enemy)
 	_draw_grid_frame(preview_rect, true)
 	_draw_grid(preview_rect, not showing_enemy)
-	draw_rect(Rect2(20, hint_label.position.y - 1, size.x - 40, 24), Color(0.02, 0.19, 0.30, 0.70))
-	_draw_wood_panel(Rect2(13, size.y - 167, size.x - 26, 60))
-	_draw_sprite(SHIP_V2, Rect2(13, size.y - 185, 90, 90))
-	_draw_heart(Vector2(114, size.y - 127), 11)
-	_draw_hp_bar(Vector2(137, size.y - 135), size.x - 230, battle.player_grid.ship.get_total_hp(), battle.player_grid.ship.get_max_hp(), Color("6de94a"))
+	_draw_chamfer(Rect2(25, hint_label.position.y - 3, size.x - 50, 26), Color(0.02, 0.16, 0.25, 0.84), 5)
+	_draw_wood_panel(Rect2(14, size.y - 169, size.x - 28, 66))
+	_draw_sprite(SHIP_V2, Rect2(11, size.y - 189, 99, 99))
+	draw_string(PIXEL_FONT, Vector2(106, size.y - 145), "YOUR SHIP", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color("ffe3a1"))
+	_draw_heart(Vector2(114, size.y - 125), 11)
+	_draw_hp_bar(Vector2(134, size.y - 135), size.x - 238, battle.player_grid.ship.get_total_hp(), battle.player_grid.ship.get_max_hp(), Color("6de94a"))
+	_draw_upgrade_card(damage_button.get_rect(), Color("ed4741"), Color("a81f31"), "DAMAGE +", battle.player_upgrades.next_cost(UpgradeState.Kind.DAMAGE), CANNONBALL_ICON, damage_button)
+	_draw_upgrade_card(speed_button.get_rect(), Color("8d51dc"), Color("593098"), "SPEED +", battle.player_upgrades.next_cost(UpgradeState.Kind.SPEED), STOPWATCH_ICON, speed_button)
+	_draw_upgrade_card(repair_button.get_rect(), Color("67c44b"), Color("31813e"), "REPAIR", battle.player_upgrades.next_cost(UpgradeState.Kind.REPAIR), REPAIR_ICON, repair_button)
+
+func _draw_chamfer(rect: Rect2, fill: Color, cut: float) -> void:
+	draw_colored_polygon(PackedVector2Array([
+		rect.position + Vector2(cut, 0), rect.position + Vector2(rect.size.x - cut, 0),
+		rect.position + Vector2(rect.size.x, cut), rect.end - Vector2(0, cut),
+		rect.end - Vector2(cut, 0), rect.position + Vector2(cut, rect.size.y),
+		rect.position + Vector2(0, rect.size.y - cut), rect.position + Vector2(0, cut)
+	]), fill)
 
 func _draw_wood_panel(rect: Rect2, parchment: bool = false) -> void:
-	draw_rect(rect.grow(3), INK)
-	draw_rect(rect, Color("e9bb71") if parchment else PLANK)
-	draw_rect(Rect2(rect.position + Vector2(3, 3), Vector2(rect.size.x - 6, 3)), Color("ffe2a0") if parchment else PLANK_LIGHT)
-	draw_rect(rect.grow(-2), Color("71432b"), false, 2)
+	_draw_chamfer(Rect2(rect.position + Vector2(0, 5), rect.size), Color(0.04, 0.10, 0.18, 0.75), 8)
+	_draw_chamfer(rect.grow(3), INK, 9)
+	_draw_chamfer(rect, Color("f5cf85") if parchment else Color("a65f35"), 7)
+	_draw_chamfer(rect.grow(-4), Color("e8b96e") if parchment else PLANK, 5)
+	draw_rect(Rect2(rect.position + Vector2(8, 5), Vector2(rect.size.x - 16, 3)), Color("ffe1a1") if parchment else Color("d99551"))
+	if not parchment:
+		draw_rect(Rect2(rect.position + Vector2(9, rect.size.y - 11), Vector2(rect.size.x - 18, 2)), Color("492b24", 0.65))
 	for x in [rect.position.x + 8, rect.end.x - 12]:
-		draw_circle(Vector2(x, rect.position.y + 12), 2.0, Color("5b332b"))
+		draw_rect(Rect2(x, rect.position.y + 12, 4, 4), Color("6f3a25"))
+
+func _draw_upgrade_card(rect: Rect2, fill: Color, dark: Color, title: String, cost: int, icon: Texture2D, button: Button) -> void:
+	_draw_chamfer(Rect2(rect.position + Vector2(0, 5), rect.size), Color("13263c"), 8)
+	_draw_chamfer(rect, INK, 8)
+	_draw_chamfer(rect.grow(-3), fill.lightened(0.10) if button.is_hovered() else fill, 6)
+	draw_rect(Rect2(rect.position + Vector2(7, 6), Vector2(rect.size.x - 14, 4)), fill.lightened(0.36))
+	draw_rect(Rect2(rect.position + Vector2(5, rect.size.y - 11), Vector2(rect.size.x - 10, 5)), dark)
+	draw_rect(Rect2(rect.position + Vector2(7, 18), Vector2(37, 43)), dark)
+	draw_texture_rect(icon, Rect2(rect.position + Vector2(8, 20), Vector2(35, 38)), false)
+	draw_string(PIXEL_FONT, rect.position + Vector2(46, 31), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 17, Color.WHITE)
+	draw_rect(Rect2(rect.position + Vector2(47, 40), Vector2(rect.size.x - 55, 27)), Color(0.09, 0.13, 0.23, 0.58))
+	draw_texture_rect(COIN_SPRITE, Rect2(rect.position + Vector2(49, 45), Vector2(18, 18)), false)
+	draw_string(PIXEL_FONT, rect.position + Vector2(67, 61), "MAX" if cost < 0 else "%d" % cost, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color("ffedaa") if not button.disabled else Color("ffe4a0"))
 
 func _draw_heart(center: Vector2, radius: float) -> void:
 	var red := Color("ff5d58")
@@ -515,9 +588,13 @@ func _draw_heart(center: Vector2, radius: float) -> void:
 	draw_colored_polygon(PackedVector2Array([center + Vector2(-radius * 0.78, -radius * 0.1), center + Vector2(radius * 0.78, -radius * 0.1), center + Vector2(0, radius * 0.75)]), red)
 
 func _draw_grid_frame(area: Rect2, small: bool) -> void:
-	draw_rect(area.grow(12 if not small else 8), Color("102f50"))
-	draw_rect(area.grow(8 if not small else 5), Color("047eae"))
-	draw_rect(area.grow(5 if not small else 3), CYAN, false, 2.0)
+	var margin := 10.0 if not small else 7.0
+	_draw_chamfer(area.grow(margin + 4), Color("092b4d"), 14 if not small else 7)
+	_draw_chamfer(area.grow(margin), Color("096b9f"), 12 if not small else 5)
+	draw_rect(area.grow(5 if not small else 3), Color("28d9ef"), false, 2.0)
+	if not small:
+		for point in [area.position + Vector2(-8, -8), Vector2(area.end.x + 4, area.position.y - 8), area.end + Vector2(4, 4), Vector2(area.position.x - 8, area.end.y + 4)]:
+			draw_rect(Rect2(point, Vector2(5, 5)), Color("b2faff"))
 
 func _draw_hp_bar(at: Vector2, width: float, hp: int, maximum: int, fill: Color) -> void:
 	draw_rect(Rect2(at, Vector2(width, 18)), INK)
@@ -538,18 +615,24 @@ func _draw_grid(area: Rect2, enemy_waters: bool) -> void:
 			var kind := knowledge.visible_kind(cell)
 			var own_ship := not enemy_waters and own_grid.ship.has_section(cell)
 			var hidden := kind == GridModel.TileKind.HIDDEN and not own_ship
-			draw_rect(rect.grow(-inset), Color("07517f") if hidden else Color("0c9bce"))
-			draw_rect(rect.grow(-inset - 1), Color("54eaff"), false, 1.5 if area == grid_rect else 0.7)
+			draw_rect(rect.grow(-inset), Color("38e4f6"))
+			draw_rect(rect.grow(-inset - 2), Color("07517f") if hidden else Color("0b92ca"))
+			draw_rect(Rect2(rect.position + Vector2(inset + 3, inset + 3), Vector2(tile - inset * 2 - 6, 2 if area == grid_rect else 1)), Color("57b9d6") if hidden else Color("7ef5ff"))
+			if area == grid_rect:
+				draw_rect(Rect2(rect.position + Vector2(inset + 3, inset + 5), Vector2(2, tile - inset * 2 - 10)), Color("2788b0") if hidden else Color("52d2e8"))
 			if hidden and area == grid_rect:
-				draw_rect(Rect2(rect.position + Vector2(tile * 0.12, tile * 0.16), Vector2(tile * 0.30, 2)), Color("146c99"))
-				draw_rect(Rect2(rect.position + Vector2(tile * 0.62, tile * 0.75), Vector2(tile * 0.20, 2)), Color("146c99"))
+				draw_rect(Rect2(rect.position + Vector2(tile * 0.14, tile * 0.18), Vector2(tile * 0.24, 2)), Color("146c99"))
+				draw_rect(Rect2(rect.position + Vector2(tile * 0.64, tile * 0.77), Vector2(tile * 0.17, 2)), Color("146c99"))
 			if not hidden:
 				draw_rect(Rect2(rect.position + Vector2(tile * 0.11, tile * 0.12), Vector2(tile * 0.72, 2)), Color("60dfff", 0.45))
 			if kind == GridModel.TileKind.HIDDEN and not own_ship:
 				if area == grid_rect:
-					draw_string(ThemeDB.fallback_font, rect.position + Vector2(0, tile * 0.70), "?", HORIZONTAL_ALIGNMENT_CENTER, tile, int(tile * 0.50), Color("76c3e1"))
+					draw_string(PIXEL_FONT, rect.position + Vector2(0, tile * 0.70), "?", HORIZONTAL_ALIGNMENT_CENTER, tile, int(tile * 0.53), Color("7bc9e8"))
 			elif kind == GridModel.TileKind.WATER:
-				draw_string(ThemeDB.fallback_font, rect.position + Vector2(0, tile * 0.75), "×", HORIZONTAL_ALIGNMENT_CENTER, tile, int(tile * 0.64), Color.WHITE)
+				var center := rect.get_center()
+				var cross := tile * 0.19
+				draw_line(center + Vector2(-cross, -cross), center + Vector2(cross, cross), Color.WHITE, maxf(2, tile * 0.065))
+				draw_line(center + Vector2(cross, -cross), center + Vector2(-cross, cross), Color.WHITE, maxf(2, tile * 0.065))
 			elif kind == GridModel.TileKind.TREASURE:
 				_draw_sprite(TREASURE_SPRITE, rect.grow(-tile * 0.04))
 			elif kind == GridModel.TileKind.ISLAND:
