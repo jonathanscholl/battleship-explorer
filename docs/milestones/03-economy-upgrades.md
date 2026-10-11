@@ -1,6 +1,6 @@
 # Milestone 3 — Economy and upgrades
 
-**Status:** Implemented locally; CI/Pages verification pending. **Outcome:** The discover → shoot → earn → upgrade → repair battle loop runs without leaving the battle screen.
+**Status:** Complete locally and deployed. **Outcome:** The discover → shoot → earn → upgrade → repair battle loop runs without leaving the battle screen.
 
 ## Prerequisite
 
@@ -40,3 +40,9 @@ Use these initial costs for the first balance pass, then revise only with playte
 ## Boundary
 
 No second currency, inventory, skill tree, permanent upgrades, or meta progression. Do not add more cannons, critical hits, or faster-discovery upgrades yet.
+
+## Completion evidence
+
+- Godot 4.7.2 import, core (20 checks), battle (38 checks), economy (74 checks), UI interaction, and main-scene smoke tests passed.
+- Release Web export succeeded. The upgrade layout was checked in a desktop browser at a 390×844 phone viewport.
+- [GitHub Actions run 38157478936](https://github.com/jonathanscholl/battleship-explorer/actions/runs/38157478936) passed validation and Pages deployment. Physical iPhone Safari and game-balance playtests remain for Milestone 6 and later tuning.
