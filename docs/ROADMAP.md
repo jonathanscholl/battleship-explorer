@@ -7,7 +7,7 @@ This is the build order for Battleship Explorer. Read [GAME_DESIGN.md](GAME_DESI
 | [1. Foundation](milestones/01-foundation.md) | Running, tappable 6×6 grid | Complete locally and deployed |
 | [2. Battle](milestones/02-battle.md) | Complete battle with two grids and automatic combat | Complete locally and deployed |
 | [3. Economy](milestones/03-economy-upgrades.md) | Coins, discoveries, three in-battle upgrades | Complete locally and deployed |
-| [4. Levels](milestones/04-levels-save.md) | Three data-driven levels and local unlocks | Complete locally; deployment pending |
+| [4. Levels](milestones/04-levels-save.md) | Three data-driven levels and local unlocks | Complete locally and deployed |
 | [5. Presentation](milestones/05-visual-audio.md) | Cozy pixel art, effects, and audio | Next |
 | [6. Mobile](milestones/06-mobile.md) | Tested phone web preview and iOS export preparation | Planned |
 

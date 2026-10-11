@@ -1,6 +1,6 @@
 # Milestone 4 — Levels and local saving
 
-**Status:** Complete locally; CI/Pages verification pending. **Outcome:** Three distinct levels can be selected, replayed, completed, and unlocked across app launches.
+**Status:** Complete locally and deployed. **Outcome:** Three distinct levels can be selected, replayed, completed, and unlocked across app launches.
 
 ## Prerequisite
 
@@ -40,3 +40,4 @@ No campaign story, procedural run structure, accounts, cloud saves, or permanent
 - Three authored `.tres` levels validate and generate across representative seeds. The level/save test covers exact starting state, victory and loss unlocks, retry and next level resets, replay, corrupt and outdated saves, and the final level boundary.
 - In a 390×844 desktop browser viewport, a full First Encounter win displayed Next Level. Reloading the page preserved First Encounter completion and unlocked Pirate Scout; Pirate Scout loaded its 6×6 battle. The Web build reported no browser errors.
 - Physical iPhone Safari and balance playtests remain open. Progress is local to each browser/device.
+- [GitHub Actions run 38160879164](https://github.com/jonathanscholl/battleship-explorer/actions/runs/38160879164) passed validation and Pages deployment. The live preview loaded its level selection without browser errors.
