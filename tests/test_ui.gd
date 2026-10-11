@@ -23,5 +23,22 @@ func _run() -> void:
 		push_error("Repeated touch changed the grid")
 		quit(1)
 		return
-	print("PASS: touch reveals one tile")
+	var battle: BattleModel = screen.get("battle")
+	if battle.player_knowledge.revealed_count() != 1 or battle.enemy_knowledge.revealed_count() != 0:
+		push_error("Touch changed the wrong grid")
+		quit(1)
+		return
+	var preview: Rect2 = screen.get("preview_rect")
+	tap.position = preview.position + preview.size * 0.5
+	screen.call("_gui_input", tap)
+	if screen.get("showing_enemy") or battle.player_knowledge.revealed_count() != 1:
+		push_error("Preview tap did not swap views or changed game state")
+		quit(1)
+		return
+	screen.call("_switch_view")
+	if not screen.get("showing_enemy"):
+		push_error("View did not switch back")
+		quit(1)
+		return
+	print("PASS: touch discovery and view switching")
 	quit(0)

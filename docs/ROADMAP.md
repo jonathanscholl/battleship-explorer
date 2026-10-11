@@ -5,8 +5,8 @@ This is the build order for Battleship Explorer. Read [GAME_DESIGN.md](GAME_DESI
 | Milestone | Deliverable | State |
 | --- | --- | --- |
 | [1. Foundation](milestones/01-foundation.md) | Running, tappable 6×6 grid | Complete locally and deployed |
-| [2. Battle](milestones/02-battle.md) | Complete battle with two grids and automatic combat | Next |
-| [3. Economy](milestones/03-economy-upgrades.md) | Coins, discoveries, three in-battle upgrades | Planned |
+| [2. Battle](milestones/02-battle.md) | Complete battle with two grids and automatic combat | Complete locally and deployed |
+| [3. Economy](milestones/03-economy-upgrades.md) | Coins, discoveries, three in-battle upgrades | Next |
 | [4. Levels](milestones/04-levels-save.md) | Three data-driven levels and local unlocks | Planned |
 | [5. Presentation](milestones/05-visual-audio.md) | Cozy pixel art, effects, and audio | Planned |
 | [6. Mobile](milestones/06-mobile.md) | Tested phone web preview and iOS export preparation | Planned |
@@ -28,6 +28,7 @@ Run from the directory containing `project.godot`:
 godot --headless --path . --editor --quit
 godot --headless --path . --script res://tests/test_core.gd
 godot --headless --path . --script res://tests/test_ui.gd
+godot --headless --path . --script res://tests/test_battle.gd
 godot --headless --path . --quit-after 2
 ```
 

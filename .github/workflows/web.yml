@@ -33,6 +33,7 @@ jobs:
         run: |
           timeout 60s godot --headless --path . --script res://tests/test_core.gd
           timeout 60s godot --headless --path . --script res://tests/test_ui.gd
+          timeout 60s godot --headless --path . --script res://tests/test_battle.gd
       - name: Export web build
         run: |
           mkdir -p build/web
