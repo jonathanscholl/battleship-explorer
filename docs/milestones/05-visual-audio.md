@@ -1,0 +1,35 @@
+# Milestone 5 — Visual and audio polish
+
+**Status:** Planned. **Outcome:** The existing game reads as a cozy, original pirate adventure, with satisfying discovery and cannon feedback.
+
+## Prerequisite
+
+Milestone 4's three levels and battle rules pass. Polish must consume gameplay events without changing their outcomes or timing.
+
+## Build in this order
+
+1. **Art specification:** Choose one logical sprite pixel density and a small shared palette, and document both in `GAME_DESIGN.md`. Use original top-down art with bright turquoise water, warm wooden ships, colorful sails, tiny islands, treasure, friendly foam, and subtle pirate framing. Keep text readable on phone screens and tile silhouettes clear at 6×6 size. Avoid direct copies of any existing game's sprites.
+2. **Replace tile placeholders:** Add assets under `assets/sprites/` for hidden water, revealed water, player/enemy ship sections, treasure, island, target marker, destroyed section, cannon, cannonball, coins, and small impact effects. Preserve the current hidden/revealed information boundary. Test all tile states in both main and preview grids before adding decorative details.
+3. **Animate event feedback:** Connect the existing discovery and shot-result events to short effects: water splash, ship discovery pop, target pulse, cannon recoil/muzzle flash, cannonball travel, small impact, damage number, coin rise, and ship sink. Use Tween, AnimationPlayer, AnimatedSprite2D, or small particles where suitable. Gentle water and ship motion can loop at low cost. Queue or cancel effects safely when switching views, restarting, or ending battle.
+4. **Audio:** Add a small audio playback component that listens to gameplay events. Cover discovery, splash, cannon fire, impact, treasure, coins, purchase, sink, victory, and defeat with short temporary or final sounds. Keep music light and optional. Playback must begin only after a user gesture on Web, and silence or failed playback must never stall simulation. Provide separate music and sound-effect volume controls in a compact settings affordance if audio is present.
+5. **HUD and transitions:** Refine the single-large-grid layout, top enemy HP/coins, small preview, and bottom player HP/upgrade buttons. Add concise level start, victory, and defeat transitions. Avoid extra status panels or long instructions. Check target and damaged states against colorful art so they remain distinct.
+6. **Asset discipline:** Import pixel textures with nearest filtering and consistent scale. Keep source assets editable and organized. Avoid large texture atlases or effects that increase Web load time without a clear payoff. Document asset dimensions and naming for future replacements.
+
+## Automated and visual checks
+
+- Gameplay tests still produce identical damage, rewards, and result ordering with animations/audio enabled or disabled.
+- A shot's HP change occurs when the simulation resolves it, independent of cannonball travel time.
+- Switching grids or restarting during a projectile cannot apply damage twice or leave a stale marker.
+- Hidden enemy tiles remain visually indistinguishable regardless of contents, including in preview and transitions.
+- Sound is silent before browser interaction and works after the first gesture; mute/volume settings do not affect gameplay.
+- Inspect every discovery, damage, target, destroyed, victory, and defeat state at portrait phone sizes. Confirm readable contrast and no blurry pixel scaling.
+
+## Acceptance gate and phone script
+
+- A short battle feels lively but remains easy to read; tapping, targeting, upgrades, and HP changes are unmistakable.
+- Web preview runs without missing assets or audio errors; loading remains reasonable on a phone connection. Baseline and new regression tests, export, CI, and Pages pass.
+- Ask the owner to test discovery satisfaction, cannon feel, readability, and sound comfort on their phone. Keep final art iteration grounded in that feedback.
+
+## Boundary
+
+This milestone changes presentation, not combat rules. No complex cutscenes, story campaign, new currencies, modules, or additional mechanics.
