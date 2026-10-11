@@ -3,14 +3,15 @@ extends RefCounted
 
 signal tile_revealed(cell: Vector2i, kind: int)
 
-enum TileKind { HIDDEN, WATER, SHIP }
+enum TileKind { HIDDEN, WATER, SHIP, TREASURE, ISLAND }
 
 var grid_size: int = 6
 var ship := ShipModel.new()
 var _revealed: Dictionary = {}
+var _special: Dictionary = {}
 
-func generate(size: int = 6, seed_value: int = 0, shape: Array[Vector2i] = ShipModel.DEFAULT_SHAPE) -> bool:
-	if size <= 0:
+func generate(size: int = 6, seed_value: int = 0, shape: Array[Vector2i] = ShipModel.DEFAULT_SHAPE, treasure_count: int = 0, island_count: int = 0) -> bool:
+	if size <= 0 or treasure_count < 0 or island_count < 0 or treasure_count + island_count > size * size - shape.size():
 		return false
 	var random := RandomNumberGenerator.new()
 	if seed_value == 0:
@@ -33,6 +34,16 @@ func generate(size: int = 6, seed_value: int = 0, shape: Array[Vector2i] = ShipM
 			if ship.place(shape, origin, rotation, size):
 				grid_size = size
 				_revealed.clear()
+				_special.clear()
+				var free: Array[Vector2i] = []
+				for cell in candidates:
+					if not ship.has_section(cell):
+						free.append(cell)
+				_shuffle_with_rng(free, random)
+				for i in treasure_count:
+					_special[free[i]] = TileKind.TREASURE
+				for i in island_count:
+					_special[free[treasure_count + i]] = TileKind.ISLAND
 				return true
 	return false
 
@@ -53,14 +64,19 @@ func reveal(cell: Vector2i) -> int:
 	if not is_inside(cell) or is_revealed(cell):
 		return TileKind.HIDDEN
 	_revealed[cell] = true
-	var kind := TileKind.SHIP if ship.has_section(cell) else TileKind.WATER
+	var kind := _kind_at(cell)
 	tile_revealed.emit(cell, kind)
 	return kind
 
 func visible_kind(cell: Vector2i) -> int:
 	if not is_inside(cell) or not is_revealed(cell):
 		return TileKind.HIDDEN
-	return TileKind.SHIP if ship.has_section(cell) else TileKind.WATER
+	return _kind_at(cell)
+
+func _kind_at(cell: Vector2i) -> int:
+	if ship.has_section(cell):
+		return TileKind.SHIP
+	return _special.get(cell, TileKind.WATER)
 
 func get_revealed_count() -> int:
 	return _revealed.size()

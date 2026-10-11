@@ -1,6 +1,6 @@
 # Milestone 3 — Economy and upgrades
 
-**Status:** Planned. **Outcome:** The complete discover → shoot → earn → upgrade → repair battle loop runs without leaving the battle screen.
+**Status:** Implemented locally; CI/Pages verification pending. **Outcome:** The discover → shoot → earn → upgrade → repair battle loop runs without leaving the battle screen.
 
 ## Prerequisite
 

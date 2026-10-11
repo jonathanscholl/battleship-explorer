@@ -4,14 +4,13 @@ extends RefCounted
 signal tile_discovered(by_player: bool, cell: Vector2i, kind: int)
 signal shot_fired(by_player: bool, cell: Vector2i, actual_damage: int, section_hp: int, ship_hp: int)
 signal battle_finished(result: int)
+signal economy_changed(by_player: bool)
 
 enum State { RUNNING, VICTORY, DEFEAT }
 
-const PLAYER_DISCOVERY_INTERVAL := 0.8
-const ENEMY_DISCOVERY_INTERVAL := 2.5
-
 var state: State = State.RUNNING
 var paused := false
+var rules: BattleRules
 var player_grid: GridModel
 var enemy_grid: GridModel
 var player_knowledge: GridKnowledge
@@ -19,10 +18,13 @@ var enemy_knowledge: GridKnowledge
 var player_cannon: CannonModel
 var enemy_cannon: CannonModel
 var enemy_ai: EnemyAI
+var player_upgrades: UpgradeState
+var enemy_upgrades: UpgradeState
 var player_discovery_remaining := 0.0
-var enemy_discovery_remaining := ENEMY_DISCOVERY_INTERVAL
+var enemy_discovery_remaining := 2.5
 
-func _init(seed_value: int = 0) -> void:
+func _init(seed_value: int = 0, battle_rules: BattleRules = null) -> void:
+	rules = battle_rules if battle_rules != null else BattleRules.new()
 	start_battle(seed_value)
 
 func start_battle(seed_value: int = 0) -> void:
@@ -30,19 +32,23 @@ func start_battle(seed_value: int = 0) -> void:
 	enemy_grid = GridModel.new()
 	var player_seed := 0 if seed_value == 0 else seed_value * 2 + 1
 	var enemy_seed := 0 if seed_value == 0 else seed_value * 2 + 2
-	var player_ok := player_grid.generate(6, player_seed)
-	var enemy_ok := enemy_grid.generate(6, enemy_seed)
+	var player_ok := player_grid.generate(rules.grid_size, player_seed, ShipModel.DEFAULT_SHAPE, rules.treasure_count, rules.island_count)
+	var enemy_ok := enemy_grid.generate(rules.grid_size, enemy_seed, ShipModel.DEFAULT_SHAPE, rules.treasure_count, rules.island_count)
 	if not player_ok or not enemy_ok:
 		push_error("Could not generate battle grids")
 		state = State.DEFEAT
 		return
-	player_knowledge = GridKnowledge.new(6)
-	enemy_knowledge = GridKnowledge.new(6)
-	player_cannon = CannonModel.new()
-	enemy_cannon = CannonModel.new()
+	player_knowledge = GridKnowledge.new(rules.grid_size)
+	enemy_knowledge = GridKnowledge.new(rules.grid_size)
+	player_cannon = CannonModel.new(rules.cannon_interval, rules.cannon_damage)
+	enemy_cannon = CannonModel.new(rules.cannon_interval, rules.cannon_damage)
 	enemy_ai = EnemyAI.new(enemy_knowledge, 0 if seed_value == 0 else seed_value * 2 + 3)
+	player_upgrades = UpgradeState.new(rules, player_cannon, player_grid.ship)
+	enemy_upgrades = UpgradeState.new(rules, enemy_cannon, enemy_grid.ship)
+	player_upgrades.changed.connect(_emit_economy_changed.bind(true))
+	enemy_upgrades.changed.connect(_emit_economy_changed.bind(false))
 	player_discovery_remaining = 0.0
-	enemy_discovery_remaining = ENEMY_DISCOVERY_INTERVAL
+	enemy_discovery_remaining = rules.enemy_discovery_interval
 	state = State.RUNNING
 	paused = false
 
@@ -54,8 +60,16 @@ func player_discover(cell: Vector2i) -> bool:
 		return false
 	if not _discover(true, cell):
 		return false
-	player_discovery_remaining = PLAYER_DISCOVERY_INTERVAL
+	player_discovery_remaining = rules.player_discovery_interval
 	return true
+
+func purchase_player(kind: UpgradeState.Kind) -> bool:
+	if paused:
+		return false
+	return player_upgrades.purchase(kind, state == State.RUNNING)
+
+func _emit_economy_changed(by_player: bool) -> void:
+	economy_changed.emit(by_player)
 
 func player_select_target(cell: Vector2i) -> bool:
 	if paused or state != State.RUNNING:
@@ -72,6 +86,11 @@ func _discover(by_player: bool, cell: Vector2i) -> bool:
 		return false
 	knowledge.observe(cell, kind, grid.ship.get_section_hp(cell) if kind == GridModel.TileKind.SHIP else 0)
 	tile_discovered.emit(by_player, cell, kind)
+	var upgrades := player_upgrades if by_player else enemy_upgrades
+	if kind == GridModel.TileKind.TREASURE:
+		upgrades.grant_coins(rules.treasure_coins)
+	elif kind == GridModel.TileKind.ISLAND:
+		upgrades.grant_coins(rules.island_coins)
 	return true
 
 func advance(delta: float) -> void:
@@ -80,7 +99,7 @@ func advance(delta: float) -> void:
 	player_discovery_remaining = maxf(0.0, player_discovery_remaining - delta)
 	enemy_discovery_remaining -= delta
 	if enemy_discovery_remaining <= 0.0:
-		enemy_discovery_remaining = ENEMY_DISCOVERY_INTERVAL
+		enemy_discovery_remaining = rules.enemy_discovery_interval
 		var choice := enemy_ai.choose_discovery()
 		if choice.x >= 0:
 			_discover(false, choice)
@@ -89,6 +108,16 @@ func advance(delta: float) -> void:
 		_fire(true)
 	if state == State.RUNNING and enemy_cannon.advance(delta, enemy_knowledge):
 		_fire(false)
+	if state == State.RUNNING:
+		_enemy_purchase()
+
+func _enemy_purchase() -> void:
+	var damaged := enemy_grid.ship.get_max_hp() - enemy_grid.ship.get_total_hp()
+	if damaged >= rules.enemy_repair_threshold and enemy_upgrades.purchase(UpgradeState.Kind.REPAIR, true):
+		return
+	if enemy_upgrades.purchase(UpgradeState.Kind.DAMAGE, true):
+		return
+	enemy_upgrades.purchase(UpgradeState.Kind.SPEED, true)
 
 func _fire(by_player: bool) -> void:
 	if state != State.RUNNING:
@@ -103,6 +132,9 @@ func _fire(by_player: bool) -> void:
 	var section_hp := grid.ship.get_section_hp(cell)
 	var ship_hp := grid.ship.get_total_hp()
 	knowledge.record_damage(cell, section_hp)
+	if actual_damage > 0:
+		var upgrades := player_upgrades if by_player else enemy_upgrades
+		upgrades.grant_coins(actual_damage * rules.damage_coins_per_hp)
 	shot_fired.emit(by_player, cell, actual_damage, section_hp, ship_hp)
 	cannon.ensure_target(knowledge)
 	if ship_hp == 0:

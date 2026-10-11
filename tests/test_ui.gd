@@ -40,5 +40,25 @@ func _run() -> void:
 		push_error("View did not switch back")
 		quit(1)
 		return
-	print("PASS: touch discovery and view switching")
+	var damage_button: Button = screen.get("damage_button")
+	var repair_button: Button = screen.get("repair_button")
+	if not damage_button.disabled and battle.player_upgrades.coins < 8:
+		push_error("Unaffordable damage button is enabled")
+		quit(1)
+		return
+	if not repair_button.disabled:
+		push_error("Repair button enabled at full health")
+		quit(1)
+		return
+	battle.player_upgrades.grant_coins(maxi(0, 8 - battle.player_upgrades.coins))
+	if damage_button.disabled:
+		push_error("Affordable damage button did not enable")
+		quit(1)
+		return
+	screen.call("_buy", UpgradeState.Kind.DAMAGE)
+	if battle.player_upgrades.damage_level != 2 or damage_button.text.find("DAMAGE 2") < 0:
+		push_error("Damage button did not purchase or update")
+		quit(1)
+		return
+	print("PASS: touch, view switching, upgrade buttons")
 	quit(0)

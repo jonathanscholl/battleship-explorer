@@ -11,6 +11,11 @@ func _init(fire_interval: float = 5.0, shot_damage: int = 1) -> void:
 	remaining = interval
 	damage = maxi(1, shot_damage)
 
+func set_interval(value: float) -> void:
+	var progress := clampf(1.0 - remaining / interval, 0.0, 1.0)
+	interval = maxf(0.1, value)
+	remaining = maxf(0.01, interval * (1.0 - progress))
+
 func select_target(knowledge: GridKnowledge, cell: Vector2i) -> bool:
 	if knowledge.visible_kind(cell) != GridModel.TileKind.SHIP or knowledge.visible_section_hp(cell) <= 0:
 		return false
