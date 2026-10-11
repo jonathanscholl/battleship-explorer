@@ -11,27 +11,39 @@ const GOLD := Color("ffd166")
 const LEAF := Color("65c77a")
 
 var battle: BattleModel
+var catalog: LevelCatalog
+var progress: LevelProgress
+var current_level: LevelDefinition
 var grid: GridModel # Compatibility for the foundation touch smoke test.
 var showing_enemy := true
 var grid_rect := Rect2()
 var preview_rect := Rect2()
 var cell_size := 0.0
 var enemy_label: Label
+var level_label: Label
 var coin_label: Label
 var player_label: Label
 var hint_label: Label
 var view_label: Label
 var preview_button: Button
 var restart_button: Button
+var levels_button: Button
 var damage_button: Button
 var speed_button: Button
 var repair_button: Button
 var result_overlay: ColorRect
 var result_label: Label
 var retry_button: Button
+var next_button: Button
+var select_button: Button
+var level_overlay: ColorRect
+var level_buttons: Array[Button] = []
 
 func _ready() -> void:
-	battle = BattleModel.new()
+	catalog = LevelCatalog.new()
+	progress = LevelProgress.new(catalog)
+	current_level = catalog.levels[0]
+	battle = BattleModel.new(0, current_level.to_rules())
 	grid = battle.enemy_grid
 	battle.tile_discovered.connect(_on_tile_discovered)
 	battle.shot_fired.connect(_on_shot_fired)
@@ -39,12 +51,14 @@ func _ready() -> void:
 	battle.economy_changed.connect(_on_economy_changed)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	enemy_label = _make_label("ENEMY  15 / 15", 17, SAND, HORIZONTAL_ALIGNMENT_LEFT)
+	level_label = _make_label("", 14, FOAM, HORIZONTAL_ALIGNMENT_LEFT)
 	coin_label = _make_label("0 COINS", 16, GOLD, HORIZONTAL_ALIGNMENT_RIGHT)
 	player_label = _make_label("YOUR SHIP  15 / 15", 17, FOAM, HORIZONTAL_ALIGNMENT_LEFT)
 	hint_label = _make_label("Tap hidden waters to explore", 16, SAND, HORIZONTAL_ALIGNMENT_CENTER)
 	view_label = _make_label("ENEMY WATERS", 15, FOAM, HORIZONTAL_ALIGNMENT_LEFT)
 	preview_button = _make_button("SWAP VIEW", _switch_view)
 	restart_button = _make_button("RESTART", _restart)
+	levels_button = _make_button("LEVELS", _open_level_select)
 	damage_button = _make_button("DAMAGE", _buy.bind(UpgradeState.Kind.DAMAGE))
 	speed_button = _make_button("SPEED", _buy.bind(UpgradeState.Kind.SPEED))
 	repair_button = _make_button("REPAIR", _buy.bind(UpgradeState.Kind.REPAIR))
@@ -56,9 +70,20 @@ func _ready() -> void:
 	result_overlay.visible = false
 	add_child(result_overlay)
 	result_label = _make_label("", 30, SAND, HORIZONTAL_ALIGNMENT_CENTER, result_overlay)
-	retry_button = _make_button("PLAY AGAIN", _restart, result_overlay)
+	retry_button = _make_button("RETRY", _restart, result_overlay)
+	next_button = _make_button("NEXT LEVEL", _next_level, result_overlay)
+	select_button = _make_button("LEVEL SELECT", _open_level_select, result_overlay)
+	level_overlay = ColorRect.new()
+	level_overlay.color = Color(0.03, 0.16, 0.22, 0.97)
+	level_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(level_overlay)
+	_make_label("CHOOSE A LEVEL", 28, SAND, HORIZONTAL_ALIGNMENT_CENTER, level_overlay)
+	for index in catalog.levels.size():
+		level_buttons.append(_make_button("", _start_level.bind(index), level_overlay))
+	battle.set_paused(true)
 	resized.connect(_update_layout)
 	_update_layout()
+	_update_level_buttons()
 	_update_hud()
 
 func _make_label(caption: String, font_size: int, color: Color, alignment: HorizontalAlignment, parent: Node = self) -> Label:
@@ -90,10 +115,14 @@ func _update_layout() -> void:
 	preview_rect = Rect2(Vector2(width - preview_size - 16, top + 82), Vector2.ONE * preview_size)
 	enemy_label.position = Vector2(16, top)
 	enemy_label.size = Vector2(width - preview_size - 44, 28)
+	level_label.position = Vector2(16, top + 100)
+	level_label.size = Vector2(width - preview_size - 44, 23)
 	coin_label.position = Vector2(width - 120, top)
 	coin_label.size = Vector2(104, 28)
 	restart_button.position = Vector2(16, top + 52)
 	restart_button.size = Vector2(96, 36)
+	levels_button.position = Vector2(118, top + 52)
+	levels_button.size = Vector2(90, 36)
 	preview_button.position = Vector2(preview_rect.position.x, top + 42)
 	preview_button.size = Vector2(preview_size, 36)
 	var main_top := preview_rect.end.y + 12
@@ -121,8 +150,18 @@ func _update_layout() -> void:
 	result_overlay.size = size
 	result_label.position = Vector2(16, height * 0.39)
 	result_label.size = Vector2(width - 32, 48)
-	retry_button.position = Vector2((width - 160) / 2.0, height * 0.49)
-	retry_button.size = Vector2(160, 52)
+	for index in 3:
+		var button: Button = [next_button, retry_button, select_button][index]
+		button.position = Vector2((width - 208) / 2.0, height * 0.48 + index * 66)
+		button.size = Vector2(208, 52)
+	level_overlay.position = Vector2.ZERO
+	level_overlay.size = size
+	var menu_title: Label = level_overlay.get_child(0)
+	menu_title.position = Vector2(16, height * 0.22)
+	menu_title.size = Vector2(width - 32, 48)
+	for index in level_buttons.size():
+		level_buttons[index].position = Vector2(28, height * 0.35 + index * 76)
+		level_buttons[index].size = Vector2(width - 56, 60)
 	queue_redraw()
 
 func _process(delta: float) -> void:
@@ -138,7 +177,7 @@ func _notification(what: int) -> void:
 		battle.set_paused(true)
 		_update_hud()
 	elif what == NOTIFICATION_APPLICATION_FOCUS_IN or what == NOTIFICATION_WM_WINDOW_FOCUS_IN:
-		battle.set_paused(false)
+		battle.set_paused(level_overlay != null and level_overlay.visible)
 		_update_hud()
 
 func _gui_input(event: InputEvent) -> void:
@@ -152,6 +191,8 @@ func _gui_input(event: InputEvent) -> void:
 			return
 		point = event.position
 	else:
+		return
+	if level_overlay.visible or result_overlay.visible:
 		return
 	if preview_rect.has_point(point):
 		_switch_view()
@@ -176,13 +217,42 @@ func _switch_view() -> void:
 
 func _restart() -> void:
 	battle.start_battle()
+	battle.set_paused(false)
 	grid = battle.enemy_grid
 	showing_enemy = true
 	view_label.text = "ENEMY WATERS"
 	hint_label.text = "Tap hidden waters to explore"
 	result_overlay.visible = false
+	level_overlay.visible = false
+	_update_layout()
 	_update_hud()
 	queue_redraw()
+
+func _start_level(index: int) -> void:
+	if index < 0 or index >= catalog.levels.size() or not progress.is_unlocked(catalog.levels[index].id):
+		return
+	current_level = catalog.levels[index]
+	battle.rules = current_level.to_rules()
+	_restart()
+
+func _next_level() -> void:
+	var next_id := catalog.next_id(current_level.id)
+	if progress.is_unlocked(next_id):
+		_start_level(catalog.index_of(next_id))
+
+func _open_level_select() -> void:
+	battle.set_paused(true)
+	result_overlay.visible = false
+	level_overlay.visible = true
+	_update_level_buttons()
+	_update_hud()
+
+func _update_level_buttons() -> void:
+	for index in level_buttons.size():
+		var level := catalog.levels[index]
+		var unlocked := progress.is_unlocked(level.id)
+		level_buttons[index].text = "%d  %s%s" % [index + 1, level.title if unlocked else "LOCKED", "  DONE" if progress.completed.has(level.id) else ""]
+		level_buttons[index].disabled = not unlocked
 
 func _buy(kind: UpgradeState.Kind) -> void:
 	if battle.purchase_player(kind):
@@ -211,6 +281,9 @@ func _on_shot_fired(by_player: bool, _cell: Vector2i, damage: int, _section_hp: 
 
 func _on_battle_finished(result: int) -> void:
 	result_label.text = "VICTORY!" if result == BattleModel.State.VICTORY else "SHIP SUNK"
+	if result == BattleModel.State.VICTORY:
+		progress.complete(current_level.id)
+	next_button.visible = result == BattleModel.State.VICTORY and not catalog.next_id(current_level.id).is_empty()
 	result_overlay.visible = true
 	_update_hud()
 	queue_redraw()
@@ -225,12 +298,13 @@ func _update_hud() -> void:
 	enemy_label.text = "ENEMY  %d / %d" % [battle.enemy_grid.ship.get_total_hp(), battle.enemy_grid.ship.get_max_hp()]
 	player_label.text = "YOUR SHIP  %d / %d" % [battle.player_grid.ship.get_total_hp(), battle.player_grid.ship.get_max_hp()]
 	coin_label.text = "%d COINS" % battle.player_upgrades.coins
+	level_label.text = current_level.title.to_upper()
 	var upgrades := battle.player_upgrades
 	var running := battle.state == BattleModel.State.RUNNING and not battle.paused
 	var damage_cost := upgrades.next_cost(UpgradeState.Kind.DAMAGE)
 	var speed_cost := upgrades.next_cost(UpgradeState.Kind.SPEED)
 	damage_button.text = "DAMAGE %d\n%s" % [upgrades.damage_level, "MAX" if damage_cost < 0 else "%d COINS" % damage_cost]
-	speed_button.text = "SPEED %ds\n%s" % [int(battle.player_cannon.interval), "MAX" if speed_cost < 0 else "%d COINS" % speed_cost]
+	speed_button.text = "SPEED %.1fs\n%s" % [battle.player_cannon.interval, "MAX" if speed_cost < 0 else "%d COINS" % speed_cost]
 	repair_button.text = "REPAIR +%d\n%d COINS" % [battle.rules.repair_hp, upgrades.next_cost(UpgradeState.Kind.REPAIR)]
 	damage_button.disabled = not upgrades.can_purchase(UpgradeState.Kind.DAMAGE, running)
 	speed_button.disabled = not upgrades.can_purchase(UpgradeState.Kind.SPEED, running)

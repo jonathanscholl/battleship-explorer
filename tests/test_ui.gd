@@ -7,6 +7,16 @@ func _run() -> void:
 	var screen: Node = load("res://scenes/main/main.tscn").instantiate()
 	root.add_child(screen)
 	await process_frame
+	var menu: ColorRect = screen.get("level_overlay")
+	if not menu.visible or not screen.get("battle").paused:
+		push_error("Level select did not open at startup")
+		quit(1)
+		return
+	screen.call("_start_level", 0)
+	if menu.visible:
+		push_error("Level 1 did not start")
+		quit(1)
+		return
 	var tap := InputEventScreenTouch.new()
 	tap.pressed = true
 	var grid_rect: Rect2 = screen.get("grid_rect")

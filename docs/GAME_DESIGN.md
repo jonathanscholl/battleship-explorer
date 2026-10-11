@@ -2,29 +2,23 @@
 
 Battleship Explorer is a cozy, offline, level-based pirate game. The intended core loop is: reveal enemy waters, target a found ship section, let cannons fire automatically while continuing to explore, earn coins from damage or discoveries, buy a simple upgrade or repair, and sink the enemy before it sinks the player. The interface stays on one large grid with a small opposite-side preview during battle.
 
-## Implemented now — Milestones 1–3
+## Implemented now — Milestones 1–4
 
-- One 6×6 enemy-water grid with a straight, connected three-tile ship at 5 HP per section. Placement uses random valid origins and rotations; tests can supply a seed.
-- All tiles begin hidden. A tap reveals water or ship after a 0.8-second cooldown. Repeat taps do nothing. Discovery does not damage the ship.
-- Each battle has separate player/enemy grids and three-section ships. The player's own ship is always visible; enemy ship locations remain hidden until the player discovers them. The enemy AI receives only its revealed knowledge of the player grid.
-- The player can select a revealed living enemy ship section. Both cannons deal 1 HP every 5 seconds after acquiring a target. If a target is destroyed, the cannon takes the next revealed living section in row-major order. Without a target, it waits for discovery.
-- The enemy reveals a random hidden player-grid tile every 2.5 seconds. Discovery and fire timers run independently. The player can switch one large grid and a small opposite-side preview without interrupting battle.
+- Each battle has separate player/enemy grids and connected ships. Level Resources set grid size, shapes, HP, starting coins, tile rewards, timers, upgrade values/costs, and enemy repair threshold. Placement uses random valid origins and rotations; tests can supply a seed.
+- All tiles begin hidden. A tap reveals water, ship, treasure, or island after the level's discovery cooldown. Repeat taps do nothing. Discovery does not damage the ship. The player's own ship is always visible; enemy ship locations remain hidden until discovered. The enemy AI receives only its revealed knowledge of the player grid.
+- The player can select a revealed living enemy ship section. Both cannons fire automatically at the level's starting damage and interval. If a target is destroyed, the cannon takes the next revealed living section in row-major order. Without a target, it waits for discovery.
+- The enemy reveals a random hidden player-grid tile at the level's configured interval. Discovery and fire timers run independently. The player can switch one large grid and a small opposite-side preview without interrupting battle.
 - A ship sinks at zero total section HP. A player shot resolves before an enemy shot due in the same update; a terminal result skips the later shot. Restart creates fresh grids, timers, and targets. Focus loss pauses simulation without catching up on return.
-- Each grid contains two treasure tiles and two island tiles, placed outside the ship. They stay hidden until discovered. Treasure grants 10 coins and islands grant 5, once per tile. Each HP of actual cannon damage grants 1 coin. The player and enemy have separate balances.
-- Damage purchases cost 8/16/28 coins and raise shot power through 1/2/3/4 HP. Speed purchases cost 10/20/35 and shorten the interval through 5/4/3/2 seconds. Damage applies to the next shot without resetting its cooldown. Speed preserves the current cooldown's progress proportionally.
-- Repair costs 8 coins and restores up to 5 HP, capped at the ship's original maximum. It fills damaged living sections before destroyed sections. Repair is unavailable at full HP or after sinking. Purchases are unavailable after the battle ends.
+- Treasure and island counts and rewards vary by level. They stay hidden until discovered and pay once per tile. Each HP of actual cannon damage grants 1 coin. The player and enemy have separate balances.
+- Damage and Speed values and costs vary by level. Damage applies to the next shot without resetting its cooldown. Speed preserves the current cooldown's progress proportionally.
+- Repair restores up to the level's configured HP amount, capped at the ship's original maximum. It fills damaged living sections before destroyed sections. Repair is unavailable at full HP or after sinking. Purchases are unavailable after the battle ends.
 - The enemy spends its own coins: repair first after at least 5 HP has been lost, then Damage, then Speed. Its purchase decisions use its own HP and balance.
-- The UI uses temporary colored tiles, special-tile icons, HP and coin displays, an upgrade row, a target outline, and concise hit/result feedback. There is no level progression yet.
+- Three authored levels are selectable: `First Encounter` (5×5, enemy ship 2×3 HP, player ship 3×4 HP, enemy discovery every 3.5 seconds), `Pirate Scout` (6×6, enemy ship 4×4 HP, player ship 3×5 HP, enemy discovery every 2.2 seconds), and `Pirate Captain` (7×7, enemy ship 5×5 HP, player ship 4×5 HP, enemy discovery every 1.7 seconds). First Encounter has 1 treasure and 1 island; Pirate Scout has 2 of each; Pirate Captain has 3 treasure and 2 islands. Their `.tres` files contain the full values.
+- A first victory unlocks the next level. A loss leaves unlocks unchanged; completed levels remain replayable. Progress stores only completed and unlocked IDs in a versioned local `user://` JSON file. Missing, corrupt, or outdated saves start at level 1. In Web, storage belongs to the current browser and device.
+- The UI uses temporary colored tiles, special-tile icons, HP and coin displays, an upgrade row, a target outline, level selection, and concise hit/result feedback.
 - The Web preview is live through GitHub Pages. Physical iPhone Safari testing remains open.
 
-## Planned rules — Milestone 4
-
-| Rule | Intended behavior | First milestone |
-| --- | --- | --- |
-| Levels | Three `.tres` level definitions; each starts fresh; victory unlocks the next | 4 |
-| Save | Local `user://` unlock/completion data only; no account or sync | 4 |
-
-The current costs are provisional balancing values. Milestone 4 moves parameters to Resources and adds `First Encounter`, `Pirate Scout`, and `Pirate Captain`.
+Level costs and pacing are provisional until phone playtests. There is no cross-device save sync.
 
 ## Planned presentation — Milestones 5–6
 

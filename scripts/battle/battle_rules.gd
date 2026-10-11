@@ -2,6 +2,12 @@ class_name BattleRules
 extends RefCounted
 
 var grid_size := 6
+var player_shape: Array[Vector2i] = ShipModel.DEFAULT_SHAPE.duplicate()
+var enemy_shape: Array[Vector2i] = ShipModel.DEFAULT_SHAPE.duplicate()
+var player_section_hp := 5
+var enemy_section_hp := 5
+var player_starting_coins := 0
+var enemy_starting_coins := 0
 var treasure_count := 2
 var island_count := 2
 var treasure_coins := 10

@@ -10,7 +10,7 @@ var ship := ShipModel.new()
 var _revealed: Dictionary = {}
 var _special: Dictionary = {}
 
-func generate(size: int = 6, seed_value: int = 0, shape: Array[Vector2i] = ShipModel.DEFAULT_SHAPE, treasure_count: int = 0, island_count: int = 0) -> bool:
+func generate(size: int = 6, seed_value: int = 0, shape: Array[Vector2i] = ShipModel.DEFAULT_SHAPE, treasure_count: int = 0, island_count: int = 0, section_hp: int = 5) -> bool:
 	if size <= 0 or treasure_count < 0 or island_count < 0 or treasure_count + island_count > size * size - shape.size():
 		return false
 	var random := RandomNumberGenerator.new()
@@ -31,7 +31,7 @@ func generate(size: int = 6, seed_value: int = 0, shape: Array[Vector2i] = ShipM
 		rotations[j] = temp
 	for origin in candidates:
 		for rotation in rotations:
-			if ship.place(shape, origin, rotation, size):
+			if ship.place(shape, origin, rotation, size, section_hp):
 				grid_size = size
 				_revealed.clear()
 				_special.clear()

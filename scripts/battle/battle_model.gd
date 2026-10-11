@@ -32,8 +32,8 @@ func start_battle(seed_value: int = 0) -> void:
 	enemy_grid = GridModel.new()
 	var player_seed := 0 if seed_value == 0 else seed_value * 2 + 1
 	var enemy_seed := 0 if seed_value == 0 else seed_value * 2 + 2
-	var player_ok := player_grid.generate(rules.grid_size, player_seed, ShipModel.DEFAULT_SHAPE, rules.treasure_count, rules.island_count)
-	var enemy_ok := enemy_grid.generate(rules.grid_size, enemy_seed, ShipModel.DEFAULT_SHAPE, rules.treasure_count, rules.island_count)
+	var player_ok := player_grid.generate(rules.grid_size, player_seed, rules.player_shape, rules.treasure_count, rules.island_count, rules.player_section_hp)
+	var enemy_ok := enemy_grid.generate(rules.grid_size, enemy_seed, rules.enemy_shape, rules.treasure_count, rules.island_count, rules.enemy_section_hp)
 	if not player_ok or not enemy_ok:
 		push_error("Could not generate battle grids")
 		state = State.DEFEAT
@@ -47,6 +47,8 @@ func start_battle(seed_value: int = 0) -> void:
 	enemy_upgrades = UpgradeState.new(rules, enemy_cannon, enemy_grid.ship)
 	player_upgrades.changed.connect(_emit_economy_changed.bind(true))
 	enemy_upgrades.changed.connect(_emit_economy_changed.bind(false))
+	player_upgrades.grant_coins(rules.player_starting_coins)
+	enemy_upgrades.grant_coins(rules.enemy_starting_coins)
 	player_discovery_remaining = 0.0
 	enemy_discovery_remaining = rules.enemy_discovery_interval
 	state = State.RUNNING
