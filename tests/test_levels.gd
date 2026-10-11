@@ -74,6 +74,8 @@ func _run() -> void:
 	var screen: Node = load("res://scenes/main/main.tscn").instantiate()
 	root.add_child(screen)
 	await process_frame
+	screen.get("audio").set_music_volume(0.0)
+	screen.get("audio").set_sound_volume(0.0)
 	screen.set("progress", LevelProgress.new(catalog, path))
 	screen.call("_update_level_buttons")
 	_check(screen.get("level_overlay").visible, "Level select not shown")
@@ -128,4 +130,8 @@ func _run() -> void:
 		print("PASS: %d level and save checks" % checks)
 	else:
 		print("FAIL: %d of %d level and save checks" % [failures, checks])
+	screen.get("effects").clear_effects()
+	screen.queue_free()
+	for i in 6:
+		await process_frame
 	quit(1 if failures > 0 else 0)

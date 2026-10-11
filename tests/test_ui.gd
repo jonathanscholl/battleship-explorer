@@ -7,6 +7,8 @@ func _run() -> void:
 	var screen: Node = load("res://scenes/main/main.tscn").instantiate()
 	root.add_child(screen)
 	await process_frame
+	screen.get("audio").set_music_volume(0.0)
+	screen.get("audio").set_sound_volume(0.0)
 	var menu: ColorRect = screen.get("level_overlay")
 	if not menu.visible or not screen.get("battle").paused:
 		push_error("Level select did not open at startup")
@@ -71,4 +73,8 @@ func _run() -> void:
 		quit(1)
 		return
 	print("PASS: touch, view switching, upgrade buttons")
+	screen.get("effects").clear_effects()
+	screen.queue_free()
+	for i in 6:
+		await process_frame
 	quit(0)

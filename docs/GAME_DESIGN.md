@@ -2,7 +2,7 @@
 
 Battleship Explorer is a cozy, offline, level-based pirate game. The intended core loop is: reveal enemy waters, target a found ship section, let cannons fire automatically while continuing to explore, earn coins from damage or discoveries, buy a simple upgrade or repair, and sink the enemy before it sinks the player. The interface stays on one large grid with a small opposite-side preview during battle.
 
-## Implemented now — Milestones 1–4
+## Implemented now — Milestones 1–5
 
 - Each battle has separate player/enemy grids and connected ships. Level Resources set grid size, shapes, HP, starting coins, tile rewards, timers, upgrade values/costs, and enemy repair threshold. Placement uses random valid origins and rotations; tests can supply a seed.
 - All tiles begin hidden. A tap reveals water, ship, treasure, or island after the level's discovery cooldown. Repeat taps do nothing. Discovery does not damage the ship. The player's own ship is always visible; enemy ship locations remain hidden until discovered. The enemy AI receives only its revealed knowledge of the player grid.
@@ -15,19 +15,20 @@ Battleship Explorer is a cozy, offline, level-based pirate game. The intended co
 - The enemy spends its own coins: repair first after at least 5 HP has been lost, then Damage, then Speed. Its purchase decisions use its own HP and balance.
 - Three authored levels are selectable: `First Encounter` (5×5, enemy ship 2×3 HP, player ship 3×4 HP, enemy discovery every 3.5 seconds), `Pirate Scout` (6×6, enemy ship 4×4 HP, player ship 3×5 HP, enemy discovery every 2.2 seconds), and `Pirate Captain` (7×7, enemy ship 5×5 HP, player ship 4×5 HP, enemy discovery every 1.7 seconds). First Encounter has 1 treasure and 1 island; Pirate Scout has 2 of each; Pirate Captain has 3 treasure and 2 islands. Their `.tres` files contain the full values.
 - A first victory unlocks the next level. A loss leaves unlocks unchanged; completed levels remain replayable. Progress stores only completed and unlocked IDs in a versioned local `user://` JSON file. Missing, corrupt, or outdated saves start at level 1. In Web, storage belongs to the current browser and device.
-- The UI uses temporary colored tiles, special-tile icons, HP and coin displays, an upgrade row, a target outline, level selection, and concise hit/result feedback.
+- The UI uses original top-down ship, island, and treasure pixel artwork with matching editable water, target, wreck, cannon, coin, and effect sprites. The shared art grid is 32×32 logical units with nearest filtering and a compact navy/turquoise/wood/gold palette. Hidden enemy tiles use exactly the same visual until revealed.
+- Discovery, shots, coins, target selection, and sinking have short visual effects. The model resolves damage and rewards before projectiles travel; switching views or restarting clears effects. A small generated WAV sound set covers discoveries, cannon, impact, coins, purchases, sink, victory, and defeat. Audio starts only after a gesture. The AUDIO panel has separate music and sound-effect sliders.
 - The Web preview is live through GitHub Pages. Physical iPhone Safari testing remains open.
 
 Level costs and pacing are provisional until phone playtests. There is no cross-device save sync.
 
-## Planned presentation — Milestones 5–6
+## Planned presentation — Milestone 6
 
-Original top-down pixel art should be bright, cute, and readable: turquoise ocean, warm ship wood, colorful sails, tiny islands and treasure, short water and cannon effects, and restrained pirate framing. Animations and audio respond to simulation events; they never determine when damage or rewards occur. The primary grid stays large, with a small preview that swaps roles when the player changes view. The phone Web build is the fast feedback path; native iOS export preparation follows after real Safari validation.
+The phone Web build is the fast feedback path; physical Safari validation and native iOS export preparation follow. Final art and sound balance should be refined from phone playtests.
 
 ## Open design questions
 
 - Tune discovery and enemy pacing, upgrade costs, and level length from phone playtests while preserving short casual sessions.
-- Choose and document one sprite pixel density and palette before final art production.
+- Tune sprite scale and sound levels on a physical phone before final art production.
 - Record physical iPhone Safari compatibility and performance rather than inferring them from desktop browser checks.
 
 The [roadmap](ROADMAP.md) contains the implementation sequence and acceptance gates. This file records rules and their implementation status; planned entries must not be treated as shipped behavior.
