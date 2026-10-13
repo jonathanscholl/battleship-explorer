@@ -28,7 +28,7 @@ func visible_kind(cell: Vector2i) -> int:
 func visible_section_hp(cell: Vector2i) -> int:
 	return _section_hp.get(cell, 0)
 
-func record_damage(cell: Vector2i, hp: int) -> void:
+func record_section_hp(cell: Vector2i, hp: int) -> void:
 	if _section_hp.has(cell):
 		_section_hp[cell] = maxi(0, hp)
 

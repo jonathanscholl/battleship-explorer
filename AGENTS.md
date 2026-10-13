@@ -21,7 +21,7 @@ Read [docs/ROADMAP.md](docs/ROADMAP.md) and the guide for the first incomplete m
 - Ships are connected predefined shapes and fit wholly inside the grid.
 - A tile is discovered only once. Discovery does not damage a ship.
 - Hidden enemy positions must never be rendered or given to future enemy AI.
-- Damage and repairs are bounded by section HP; coins from shots use actual damage dealt. Treasure and island discovery pay once.
+- Damage and repairs are bounded by section HP; coins from shots use actual damage dealt. A repaired section already discovered by the opponent must refresh in that opponent’s knowledge so it is visible and targetable again, without revealing hidden sections. Treasure and island discovery pay once.
 - Use the same model rules for player and enemy in the battle milestone.
 - A cannon attacks only revealed, living sections. Damage resolves before visual effects. Player shots resolve before enemy shots if both are due together; a terminal result stops later actions.
 - Focus loss pauses simulation without catch-up time on return. Restart creates fresh grids, targets, and timers.

@@ -6,6 +6,7 @@ signal shot_fired(by_player: bool, cell: Vector2i, actual_damage: int, section_h
 signal battle_finished(result: int)
 signal economy_changed(by_player: bool)
 signal scout_launched(by_player: bool, route: int, cells: Array[Vector2i])
+signal ship_repaired(by_player: bool, restored_hp: int)
 
 enum State { RUNNING, VICTORY, DEFEAT }
 
@@ -73,7 +74,20 @@ func player_send_scout(cell: Vector2i) -> bool:
 func purchase_player(kind: UpgradeState.Kind) -> bool:
 	if paused:
 		return false
-	return player_upgrades.purchase(kind, state == State.RUNNING)
+	var before_hp := player_grid.ship.get_total_hp()
+	if not player_upgrades.purchase(kind, state == State.RUNNING):
+		return false
+	if kind == UpgradeState.Kind.REPAIR:
+		_sync_repaired_sections(true, player_grid.ship.get_total_hp() - before_hp)
+	return true
+
+func _sync_repaired_sections(by_player: bool, restored_hp: int) -> void:
+	var ship := player_grid.ship if by_player else enemy_grid.ship
+	var opponent_knowledge := enemy_knowledge if by_player else player_knowledge
+	for cell: Vector2i in ship.sections.keys():
+		if opponent_knowledge.visible_kind(cell) == GridModel.TileKind.SHIP:
+			opponent_knowledge.record_section_hp(cell, ship.get_section_hp(cell))
+	ship_repaired.emit(by_player, restored_hp)
 
 func _emit_economy_changed(by_player: bool) -> void:
 	economy_changed.emit(by_player)
@@ -128,8 +142,11 @@ func advance(delta: float) -> void:
 
 func _enemy_purchase() -> void:
 	var damaged := enemy_grid.ship.get_max_hp() - enemy_grid.ship.get_total_hp()
-	if damaged >= rules.enemy_repair_threshold and enemy_upgrades.purchase(UpgradeState.Kind.REPAIR, true):
-		return
+	if damaged >= rules.enemy_repair_threshold:
+		var before_hp := enemy_grid.ship.get_total_hp()
+		if enemy_upgrades.purchase(UpgradeState.Kind.REPAIR, true):
+			_sync_repaired_sections(false, enemy_grid.ship.get_total_hp() - before_hp)
+			return
 	if enemy_upgrades.purchase(UpgradeState.Kind.DAMAGE, true):
 		return
 	if enemy_upgrades.purchase(UpgradeState.Kind.SCOUT, true):
@@ -148,7 +165,7 @@ func _fire(by_player: bool) -> void:
 	var actual_damage := grid.ship.damage(cell, cannon.damage)
 	var section_hp := grid.ship.get_section_hp(cell)
 	var ship_hp := grid.ship.get_total_hp()
-	knowledge.record_damage(cell, section_hp)
+	knowledge.record_section_hp(cell, section_hp)
 	if actual_damage > 0:
 		var upgrades := player_upgrades if by_player else enemy_upgrades
 		upgrades.grant_coins(actual_damage * rules.damage_coins_per_hp)

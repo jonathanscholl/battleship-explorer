@@ -75,6 +75,7 @@ func _ready() -> void:
 	battle.battle_finished.connect(_on_battle_finished)
 	battle.economy_changed.connect(_on_economy_changed)
 	battle.scout_launched.connect(_on_scout_launched)
+	battle.ship_repaired.connect(_on_ship_repaired)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	audio = GameAudio.new()
 	add_child(audio)
@@ -504,9 +505,14 @@ func _on_battle_finished(result: int) -> void:
 	_update_hud()
 	queue_redraw()
 
-func _on_economy_changed(by_player: bool) -> void:
-	if by_player:
-		_update_hud()
+func _on_economy_changed(_by_player: bool) -> void:
+	_update_hud()
+
+func _on_ship_repaired(by_player: bool, restored_hp: int) -> void:
+	if not by_player:
+		hint_label.text = "Enemy repaired +%d HP - fire again!" % restored_hp
+	_update_hud()
+	queue_redraw()
 
 func _on_scout_launched(by_player: bool, route: int, cells: Array[Vector2i]) -> void:
 	if by_player:

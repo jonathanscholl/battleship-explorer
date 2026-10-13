@@ -111,6 +111,41 @@ func _run() -> void:
 	enemy.advance(0.01)
 	_check(enemy.player_grid.ship.get_total_hp() == 13 and enemy.enemy_upgrades.coins == 2, "Enemy damage reward wrong")
 
+	# Regression: an enemy repair must revive the revealed section in the player's
+	# knowledge too. Otherwise both sections can appear wrecked while HP remains.
+	var first_level: LevelDefinition = load("res://resources/levels/first_encounter.tres")
+	var repair_battle := BattleModel.new(77, first_level.to_rules())
+	var repaired_events: Array = []
+	repair_battle.ship_repaired.connect(func(by_player: bool, amount: int) -> void: repaired_events.append([by_player, amount]))
+	var sections: Array = repair_battle.enemy_grid.ship.sections.keys()
+	var repaired_cell: Vector2i = sections[0]
+	var other_cell: Vector2i = sections[1]
+	repair_battle._discover(true, repaired_cell)
+	repair_battle._discover(true, other_cell)
+	repair_battle.enemy_upgrades.grant_coins(first_level.repair_cost)
+	repair_battle.player_cannon.damage = first_level.enemy_section_hp
+	repair_battle.player_cannon.select_target(repair_battle.player_knowledge, repaired_cell)
+	repair_battle.player_cannon.remaining = 0.01
+	repair_battle.advance(0.01)
+	_check(repair_battle.enemy_grid.ship.get_section_hp(repaired_cell) == first_level.enemy_section_hp and repair_battle.player_knowledge.visible_section_hp(repaired_cell) == first_level.enemy_section_hp, "Enemy repaired a section but player still sees a wreck")
+	_check(repaired_events.size() == 1 and repaired_events[0] == [false, first_level.enemy_section_hp], "Enemy repair event missing or incorrect")
+	_check(repair_battle.player_knowledge.revealed_count() == 2, "Repair revealed a hidden tile")
+	repair_battle.player_cannon.select_target(repair_battle.player_knowledge, other_cell)
+	repair_battle.player_cannon.remaining = 0.01
+	repair_battle.advance(0.01)
+	_check(repair_battle.enemy_grid.ship.get_total_hp() == first_level.enemy_section_hp and repair_battle.player_cannon.target == repaired_cell, "Cannon did not retarget repaired section")
+	repair_battle.player_cannon.remaining = 0.01
+	repair_battle.advance(0.01)
+	_check(repair_battle.state == BattleModel.State.VICTORY and repair_battle.enemy_grid.ship.get_total_hp() == 0, "Repaired two-section ship cannot be defeated")
+	var own_repair := BattleModel.new(78, first_level.to_rules())
+	var own_cell: Vector2i = own_repair.player_grid.ship.sections.keys()[0]
+	own_repair._discover(false, own_cell)
+	own_repair.player_grid.ship.damage(own_cell, first_level.player_section_hp)
+	own_repair.enemy_knowledge.record_section_hp(own_cell, 0)
+	own_repair.player_upgrades.grant_coins(first_level.repair_cost)
+	_check(own_repair.purchase_player(UpgradeState.Kind.REPAIR) and own_repair.enemy_knowledge.visible_section_hp(own_cell) == first_level.player_section_hp, "Player repair did not update enemy knowledge")
+	_check(own_repair.enemy_knowledge.revealed_count() == 1 and own_repair.enemy_cannon.select_target(own_repair.enemy_knowledge, own_cell), "Player repair leaked hidden sections or remained untargetable")
+
 	if failures == 0:
 		print("PASS: %d economy checks" % checks)
 	else:
