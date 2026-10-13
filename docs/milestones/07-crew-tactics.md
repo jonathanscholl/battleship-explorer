@@ -1,6 +1,6 @@
 # Milestone 7 — Crew tactics and ship placement
 
-**Status:** Implemented locally; deployment verification pending. **Outcome:** A battle starts with ship placement and then becomes a sequence of deliberate crew orders. The player decides when to scout, fire, repair, and upgrade.
+**Status:** Complete locally and deployed. **Outcome:** A battle starts with ship placement and then becomes a sequence of deliberate crew orders. The player decides when to scout, fire, repair, and upgrade.
 
 ## Player loop
 
@@ -36,3 +36,7 @@
 - A complete level can be won through manually ordered shots; repair and scouts work during combat and respect pause.
 - The portrait UI communicates crew availability, order status, enemy threats, and action costs without clipping.
 - All automated checks, Web export, CI, and Pages deployment pass. Device-only checks stay open in Milestone 8.
+
+## Verification record
+
+Godot import, all eight test scripts, main-scene smoke, and release Web export passed. A 390×844 browser check covered placement, sailing, crew/action controls, armory, and scout worker assignment. [GitHub Actions run 38474512065](https://github.com/jonathanscholl/battleship-explorer/actions/runs/38474512065) passed validation and Pages deployment; the [live preview](https://jonathanscholl.github.io/battleship-explorer/) loaded and showed the crew tactics build. Physical iPhone Safari playtesting remains in Milestone 8.

@@ -10,7 +10,7 @@ This is the build order for Battleship Explorer. Read [GAME_DESIGN.md](GAME_DESI
 | [4. Levels](milestones/04-levels-save.md) | Three data-driven levels and local unlocks | Complete locally and deployed |
 | [5. Presentation](milestones/05-visual-audio.md) | Cozy pixel art, effects, and audio | Complete locally and deployed |
 | [6. Scout and idle combat](milestones/06-scout-idle-combat.md) | Sector scouts, cooldowns, automatic fighting, scout upgrade | Complete locally and deployed |
-| [7. Crew tactics](milestones/07-crew-tactics.md) | Ship placement, shared workers, manual attacks, timed repairs | Complete locally; deployment pending |
+| [7. Crew tactics](milestones/07-crew-tactics.md) | Ship placement, shared workers, manual attacks, timed repairs | Complete locally and deployed |
 | [8. Mobile](milestones/08-mobile.md) | Tested phone web preview and iOS export preparation | Next |
 
 ## How an agent should work
