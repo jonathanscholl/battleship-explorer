@@ -9,7 +9,7 @@ This is the build order for Battleship Explorer. Read [GAME_DESIGN.md](GAME_DESI
 | [3. Economy](milestones/03-economy-upgrades.md) | Coins, discoveries, three in-battle upgrades | Complete locally and deployed |
 | [4. Levels](milestones/04-levels-save.md) | Three data-driven levels and local unlocks | Complete locally and deployed |
 | [5. Presentation](milestones/05-visual-audio.md) | Cozy pixel art, effects, and audio | Complete locally and deployed |
-| [6. Scout and idle combat](milestones/06-scout-idle-combat.md) | Sector scouts, cooldowns, automatic fighting, scout upgrade | Complete locally; deployment pending |
+| [6. Scout and idle combat](milestones/06-scout-idle-combat.md) | Sector scouts, cooldowns, automatic fighting, scout upgrade | Complete locally and deployed |
 | [7. Mobile](milestones/07-mobile.md) | Tested phone web preview and iOS export preparation | Next |
 
 ## How an agent should work

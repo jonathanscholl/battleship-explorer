@@ -1,6 +1,6 @@
 # Milestone 6 — Scout and idle combat
 
-**Status:** Implemented locally; CI and Pages verification pending. **Outcome:** Exploration has deliberate timing and choices while cannons keep fighting automatically.
+**Status:** Complete locally and deployed. **Outcome:** Exploration has deliberate timing and choices while cannons keep fighting automatically.
 
 ## Build order
 
@@ -18,6 +18,10 @@
 - Enemy scouting reveals only after travel, uses only its own knowledge, and keeps auto combat running.
 - Scout purchases shorten launch and route intervals with proportional remaining time; pause, restart, and battle end stop or reset scout actions.
 - Model, UI, level, economy, and presentation tests pass; main scene runs; Web export, CI, and Pages succeed.
+
+## Verification
+
+Godot import, all seven test scripts, main-scene smoke, and release Web export passed locally. The 390×844 browser preview showed the scout controls and pending scan outline without revealing hidden cells. [GitHub Actions run 38470019220](https://github.com/jonathanscholl/battleship-explorer/actions/runs/38470019220) passed validation and Pages deployment; the [live phone preview](https://jonathanscholl.github.io/battleship-explorer/) was checked after deployment. Physical iPhone Safari testing remains in Milestone 7.
 
 ## Balance notes
 
