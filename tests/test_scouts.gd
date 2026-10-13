@@ -13,7 +13,7 @@ func _check(ok: bool, message: String) -> void:
 		push_error(message)
 
 func _run() -> void:
-	var battle := BattleModel.new(212)
+	var battle := BattleModel.new(212, null, false)
 	var seen: Array = []
 	battle.tile_discovered.connect(func(by_player: bool, cell: Vector2i, kind: int) -> void: seen.append([by_player, cell, kind]))
 	_check(battle.player_send_scout(Vector2i(0, 0)), "First scout did not launch")

@@ -27,3 +27,10 @@ var speed_costs: Array[int] = [10, 20, 35]
 var repair_cost := 8
 var repair_hp := 5
 var enemy_repair_threshold := 5
+
+var crew_total := 3
+var tactical_hp_multiplier := 2
+var gun_aim_time := 3.0
+var repair_order_time := 4.5
+var repair_order_cost := 4
+var enemy_order_interval := 3.0

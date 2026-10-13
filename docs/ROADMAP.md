@@ -10,7 +10,8 @@ This is the build order for Battleship Explorer. Read [GAME_DESIGN.md](GAME_DESI
 | [4. Levels](milestones/04-levels-save.md) | Three data-driven levels and local unlocks | Complete locally and deployed |
 | [5. Presentation](milestones/05-visual-audio.md) | Cozy pixel art, effects, and audio | Complete locally and deployed |
 | [6. Scout and idle combat](milestones/06-scout-idle-combat.md) | Sector scouts, cooldowns, automatic fighting, scout upgrade | Complete locally and deployed |
-| [7. Mobile](milestones/07-mobile.md) | Tested phone web preview and iOS export preparation | Next |
+| [7. Crew tactics](milestones/07-crew-tactics.md) | Ship placement, shared workers, manual attacks, timed repairs | Complete locally; deployment pending |
+| [8. Mobile](milestones/08-mobile.md) | Tested phone web preview and iOS export preparation | Next |
 
 ## How an agent should work
 
@@ -30,6 +31,7 @@ godot --headless --path . --editor --quit
 godot --headless --path . --script res://tests/test_core.gd
 godot --headless --path . --script res://tests/test_ui.gd
 godot --headless --path . --script res://tests/test_scouts.gd
+godot --headless --path . --script res://tests/test_tactical.gd
 godot --headless --path . --script res://tests/test_battle.gd
 godot --headless --path . --script res://tests/test_economy.gd
 godot --headless --path . --script res://tests/test_levels.gd
@@ -44,7 +46,7 @@ Run any new milestone test scripts as well. For a Web build, install matching Go
 - One large grid and a small opposite-side preview. Never present two equal-sized grids.
 - Offline, single-player, level-based play. One currency: coins.
 - Predefined connected ships stay fixed during battle. No ship-building, modules, or movement.
-- Discovery does not deal damage. Cannons only attack discovered, living sections.
+- Discovery does not deal damage. Cannons only attack discovered, living sections. The player orders each tactical shot manually.
 - Player and enemy follow the same rules; enemy decisions use only information it has discovered.
 - Simulation applies results before visual or audio effects. Pausing the app stops simulation time.
 - Keep interactions simple enough to understand within seconds. Avoid extra screens and explanatory panels during battle.

@@ -28,6 +28,13 @@ func grant_coins(amount: int) -> void:
 	coins += amount
 	changed.emit()
 
+func spend_coins(amount: int) -> bool:
+	if amount < 0 or coins < amount:
+		return false
+	coins -= amount
+	changed.emit()
+	return true
+
 func next_cost(kind: Kind) -> int:
 	match kind:
 		Kind.DAMAGE:

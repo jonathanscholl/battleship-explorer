@@ -80,3 +80,28 @@ func _kind_at(cell: Vector2i) -> int:
 
 func get_revealed_count() -> int:
 	return _revealed.size()
+
+func relocate_ship(shape: Array[Vector2i], origin: Vector2i, rotation: int, hp: int) -> bool:
+	if not _revealed.is_empty():
+		return false
+	var candidate := ShipModel.new()
+	if not candidate.place(shape, origin, rotation, grid_size, hp):
+		return false
+	var displaced: Array[int] = []
+	for cell in _special.keys():
+		if candidate.has_section(cell):
+			displaced.append(_special[cell])
+			_special.erase(cell)
+	ship.place(shape, origin, rotation, grid_size, hp)
+	for kind in displaced:
+		for y in grid_size:
+			var found := false
+			for x in grid_size:
+				var cell := Vector2i(x, y)
+				if not ship.has_section(cell) and not _special.has(cell):
+					_special[cell] = kind
+					found = true
+					break
+			if found:
+				break
+	return true

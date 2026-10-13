@@ -20,7 +20,7 @@ A runnable Godot 4.7.2 project with a portrait, tappable 6×6 exploration grid, 
 - Run every baseline command in [ROADMAP.md](../ROADMAP.md) after changes to the grid, ship, UI, project settings, or export preset.
 - Confirm a fresh load shows 0/36 discovered, a tap reveals exactly one tile, and another tap of that tile does not reveal it again.
 - Confirm hidden ship locations stay hidden in every public enemy-grid view.
-- Confirm the web export loads and accepts a click. A desktop browser and a 390×844 viewport were checked; a physical iPhone Safari check belongs to Milestone 7.
+- Confirm the web export loads and accepts a click. A desktop browser and a 390×844 viewport were checked; a physical iPhone Safari check belongs to Milestone 8.
 
 ## Handoff to Milestone 2
 

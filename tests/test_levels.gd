@@ -22,7 +22,7 @@ func _run() -> void:
 	for level in catalog.levels:
 		_check(level.validate().is_empty(), "Invalid authored level: " + level.id)
 		for seed_value in [1, 2, 3, 17, 101]:
-			var battle := BattleModel.new(seed_value, level.to_rules())
+			var battle := BattleModel.new(seed_value, level.to_rules(), false)
 			_check(battle.state == BattleModel.State.RUNNING, "Level could not generate: " + level.id)
 			_check(battle.player_grid.ship.get_total_hp() == level.player_shape.size() * level.player_section_hp, "Player HP differs from resource")
 			_check(battle.enemy_grid.ship.get_total_hp() == level.enemy_shape.size() * level.enemy_section_hp, "Enemy HP differs from resource")
@@ -83,32 +83,37 @@ func _run() -> void:
 	_check(screen.get("current_level").id == "first_encounter", "Locked level started")
 	screen.call("_start_level", 0)
 	var first_battle: BattleModel = screen.get("battle")
-	_check(not first_battle.paused and first_battle.rules.grid_size == 5, "Level 1 did not start")
+	_check(first_battle.state == BattleModel.State.SETUP and first_battle.rules.grid_size == 5, "Level 1 did not enter placement")
+	first_battle.place_player_ship(Vector2i(0, 0), 0)
+	screen.call("_begin_battle")
+	_check(first_battle.state == BattleModel.State.RUNNING and first_battle.player_grid.ship.get_total_hp() == 24, "Placement did not start level with tactical HP")
 	var player_last: Vector2i = first_battle.player_grid.ship.sections.keys()[0]
 	for cell in first_battle.player_grid.ship.sections.keys():
 		first_battle.player_grid.ship.damage(cell, first_battle.player_grid.ship.section_max_hp if cell != player_last else first_battle.player_grid.ship.section_max_hp - 1)
 	first_battle._discover(false, player_last)
 	first_battle.enemy_cannon.select_target(first_battle.enemy_knowledge, player_last)
-	first_battle.enemy_cannon.remaining = 0.01
-	first_battle.advance(0.01)
+	first_battle._fire(false)
 	_check(first_battle.state == BattleModel.State.DEFEAT and not screen.get("progress").is_unlocked("pirate_scout"), "Loss unlocked a level")
 	screen.call("_restart")
-	_check(first_battle.state == BattleModel.State.RUNNING and first_battle.player_grid.ship.get_total_hp() == 12, "Retry after loss did not reset")
+	_check(first_battle.state == BattleModel.State.SETUP and first_battle.player_grid.ship.sections.is_empty(), "Retry skipped placement")
+	first_battle.place_player_ship(Vector2i(0, 0), 0)
+	screen.call("_begin_battle")
 	first_battle.player_upgrades.grant_coins(10)
 	first_battle.purchase_player(UpgradeState.Kind.DAMAGE)
 	first_battle._discover(true, first_battle.enemy_grid.ship.sections.keys()[0])
 	screen.call("_restart")
 	_check(first_battle.player_upgrades.coins == 4 and first_battle.player_upgrades.damage_level == 1 and first_battle.player_knowledge.revealed_count() == 0 and first_battle.player_cannon.target == Vector2i(-1, -1), "Retry retained temporary state")
+	first_battle.place_player_ship(Vector2i(0, 0), 0)
+	screen.call("_begin_battle")
 	var target: Vector2i = first_battle.enemy_grid.ship.sections.keys()[0]
 	for cell in first_battle.enemy_grid.ship.sections.keys():
 		first_battle.enemy_grid.ship.damage(cell, first_battle.enemy_grid.ship.section_max_hp if cell != target else first_battle.enemy_grid.ship.section_max_hp - 1)
 	first_battle._discover(true, target)
 	first_battle.player_cannon.select_target(first_battle.player_knowledge, target)
-	first_battle.player_cannon.remaining = 0.01
-	first_battle.advance(0.01)
+	first_battle._fire(true)
 	_check(first_battle.state == BattleModel.State.VICTORY and screen.get("progress").is_unlocked("pirate_scout"), "Victory did not unlock level 2")
 	screen.call("_next_level")
-	_check(screen.get("current_level").id == "pirate_scout" and screen.get("battle").player_knowledge.revealed_count() == 0, "Next level did not start fresh")
+	_check(screen.get("current_level").id == "pirate_scout" and screen.get("battle").state == BattleModel.State.SETUP and screen.get("battle").player_knowledge.revealed_count() == 0, "Next level did not start fresh in placement")
 	screen.call("_open_level_select")
 	_check(screen.get("battle").paused and screen.get("level_overlay").visible, "Level select did not pause battle")
 	screen.call("_start_level", 0)
@@ -116,13 +121,14 @@ func _run() -> void:
 	screen.get("progress").complete("pirate_scout")
 	screen.call("_start_level", 2)
 	var final_battle: BattleModel = screen.get("battle")
+	final_battle.place_player_ship(Vector2i(0, 0), 0)
+	screen.call("_begin_battle")
 	var final_target: Vector2i = final_battle.enemy_grid.ship.sections.keys()[0]
 	for cell in final_battle.enemy_grid.ship.sections.keys():
 		final_battle.enemy_grid.ship.damage(cell, final_battle.enemy_grid.ship.section_max_hp if cell != final_target else final_battle.enemy_grid.ship.section_max_hp - 1)
 	final_battle._discover(true, final_target)
 	final_battle.player_cannon.select_target(final_battle.player_knowledge, final_target)
-	final_battle.player_cannon.remaining = 0.01
-	final_battle.advance(0.01)
+	final_battle._fire(true)
 	_check(final_battle.state == BattleModel.State.VICTORY and not screen.get("next_button").visible, "Final level offered nonexistent next level")
 	DirAccess.remove_absolute(absolute)
 

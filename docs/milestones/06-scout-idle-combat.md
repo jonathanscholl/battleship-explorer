@@ -1,6 +1,6 @@
 # Milestone 6 — Scout and idle combat
 
-**Status:** Complete locally and deployed. **Outcome:** Exploration has deliberate timing and choices while cannons keep fighting automatically.
+**Status:** Complete locally and deployed as a historical milestone. **Outcome at the time:** Exploration gained deliberate timing while cannons fired automatically. Milestone 7 replaced player auto-fire with manual crew orders.
 
 ## Build order
 
@@ -21,7 +21,7 @@
 
 ## Verification
 
-Godot import, all seven test scripts, main-scene smoke, and release Web export passed locally. The 390×844 browser preview showed the scout controls and pending scan outline without revealing hidden cells. [GitHub Actions run 38470019220](https://github.com/jonathanscholl/battleship-explorer/actions/runs/38470019220) passed validation and Pages deployment; the [live phone preview](https://jonathanscholl.github.io/battleship-explorer/) was checked after deployment. Physical iPhone Safari testing remains in Milestone 7.
+Godot import, all seven test scripts, main-scene smoke, and release Web export passed locally. The 390×844 browser preview showed the scout controls and pending scan outline without revealing hidden cells. [GitHub Actions run 38470019220](https://github.com/jonathanscholl/battleship-explorer/actions/runs/38470019220) passed validation and Pages deployment; the [live phone preview](https://jonathanscholl.github.io/battleship-explorer/) was checked after deployment. Physical iPhone Safari testing remains in Milestone 8.
 
 ## Balance notes
 

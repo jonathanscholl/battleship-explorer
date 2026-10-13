@@ -27,12 +27,14 @@ func _run() -> void:
 	screen.call("_start_level", 0)
 	_check(audio.unlocked and not audio.music_player.playing, "Mute changed gesture unlock behavior")
 	var battle: BattleModel = screen.get("battle")
+	battle.place_player_ship(Vector2i(0, 0), 0)
+	screen.call("_begin_battle")
 	var target: Vector2i = battle.enemy_grid.ship.sections.keys()[0]
 	battle._discover(true, target)
 	battle.player_cannon.select_target(battle.player_knowledge, target)
 	var hp_before := battle.enemy_grid.ship.get_total_hp()
-	battle.player_cannon.remaining = 0.01
-	battle.advance(0.01)
+	battle.player_order_fire()
+	battle.advance(battle.rules.gun_aim_time + 0.01)
 	_check(battle.enemy_grid.ship.get_total_hp() == hp_before - 1, "Projectile animation delayed damage")
 	_check(effects.get_child_count() > 0, "Shot spawned no visual effect")
 	var impacts := [0]
@@ -58,8 +60,8 @@ func _run() -> void:
 	for cell in battle.enemy_grid.ship.sections.keys():
 		battle.enemy_grid.ship.damage(cell, battle.enemy_grid.ship.get_section_hp(cell) if cell != final_cell else battle.enemy_grid.ship.get_section_hp(cell) - 1)
 	battle.player_cannon.select_target(battle.player_knowledge, final_cell)
-	battle.player_cannon.remaining = 0.01
-	battle.advance(0.01)
+	battle.player_order_fire()
+	battle.advance(battle.rules.gun_aim_time + 0.01)
 	_check(battle.state == BattleModel.State.VICTORY and battle.enemy_grid.ship.get_total_hp() == 0, "Presentation changed terminal shot ordering")
 	await create_timer(0.5).timeout
 	screen.call("_restart")

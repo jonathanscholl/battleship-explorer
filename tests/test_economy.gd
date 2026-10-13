@@ -34,7 +34,7 @@ func _run() -> void:
 				_check(not grid.ship.has_section(cell), "Island overlaps ship")
 	_check(treasure == 2 and island == 2, "Wrong special counts")
 
-	var battle := BattleModel.new(101)
+	var battle := BattleModel.new(101, null, false)
 	var treasure_cell := Vector2i(-1, -1)
 	var island_cell := Vector2i(-1, -1)
 	for cell in battle.enemy_grid._special:
@@ -95,7 +95,7 @@ func _run() -> void:
 	_check(not upgrades.purchase(UpgradeState.Kind.REPAIR, true), "Sunk ship repaired")
 	_check(not upgrades.purchase(UpgradeState.Kind.REPAIR, false), "Purchase worked after battle")
 
-	var enemy := BattleModel.new(44)
+	var enemy := BattleModel.new(44, null, false)
 	enemy.enemy_grid.ship.damage(enemy.enemy_grid.ship.sections.keys()[0], 5)
 	enemy.enemy_upgrades.grant_coins(8)
 	enemy.advance(0.01)
@@ -114,7 +114,7 @@ func _run() -> void:
 	# Regression: an enemy repair must revive the revealed section in the player's
 	# knowledge too. Otherwise both sections can appear wrecked while HP remains.
 	var first_level: LevelDefinition = load("res://resources/levels/first_encounter.tres")
-	var repair_battle := BattleModel.new(77, first_level.to_rules())
+	var repair_battle := BattleModel.new(77, first_level.to_rules(), false)
 	var repaired_events: Array = []
 	repair_battle.ship_repaired.connect(func(by_player: bool, amount: int) -> void: repaired_events.append([by_player, amount]))
 	var sections: Array = repair_battle.enemy_grid.ship.sections.keys()
@@ -137,7 +137,7 @@ func _run() -> void:
 	repair_battle.player_cannon.remaining = 0.01
 	repair_battle.advance(0.01)
 	_check(repair_battle.state == BattleModel.State.VICTORY and repair_battle.enemy_grid.ship.get_total_hp() == 0, "Repaired two-section ship cannot be defeated")
-	var own_repair := BattleModel.new(78, first_level.to_rules())
+	var own_repair := BattleModel.new(78, first_level.to_rules(), false)
 	var own_cell: Vector2i = own_repair.player_grid.ship.sections.keys()[0]
 	own_repair._discover(false, own_cell)
 	own_repair.player_grid.ship.damage(own_cell, first_level.player_section_hp)

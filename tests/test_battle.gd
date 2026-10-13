@@ -24,7 +24,7 @@ func _run() -> void:
 	var ai_a := EnemyAI.new(GridKnowledge.new(6), 91)
 	var ai_b := EnemyAI.new(GridKnowledge.new(6), 91)
 	_check(ai_a.choose_discovery() == ai_b.choose_discovery(), "AI choice depends on hidden grid data")
-	var battle := BattleModel.new(42)
+	var battle := BattleModel.new(42, null, false)
 	_check(battle.player_grid != battle.enemy_grid, "Sides share a grid")
 	_check(battle.player_grid.ship.get_total_hp() == 15 and battle.enemy_grid.ship.get_total_hp() == 15, "Wrong initial HP")
 	_check(battle.enemy_ai.knowledge == battle.enemy_knowledge, "AI has wrong knowledge")
@@ -68,13 +68,13 @@ func _run() -> void:
 	battle.start_battle(42)
 	_check(battle.state == BattleModel.State.RUNNING and battle.player_knowledge.revealed_count() == 0, "Restart kept old state")
 	_check(battle.player_cannon.target == Vector2i(-1, -1) and battle.enemy_grid.ship.get_total_hp() == 15, "Restart kept old target or HP")
-	var quiet := BattleModel.new(13)
+	var quiet := BattleModel.new(13, null, false)
 	quiet.enemy_scout_decision_remaining = 1000.0
 	quiet.advance(5.0)
 	_check(quiet.player_grid.ship.get_total_hp() == 15, "Enemy attacked an undiscovered section")
 
 	# Both cannons are due together; the player's killing shot resolves first.
-	var tie := BattleModel.new(7)
+	var tie := BattleModel.new(7, null, false)
 	var enemy_last: Vector2i = tie.enemy_grid.ship.sections.keys()[0]
 	var player_last: Vector2i = tie.player_grid.ship.sections.keys()[0]
 	for cell in tie.enemy_grid.ship.sections.keys():
@@ -96,7 +96,7 @@ func _run() -> void:
 	tie.advance(100.0)
 	_check(tie_shots.size() == 1 and results.size() == 1, "Actions continued after victory")
 
-	var loss := BattleModel.new(9)
+	var loss := BattleModel.new(9, null, false)
 	var last: Vector2i = loss.player_grid.ship.sections.keys()[0]
 	for cell in loss.player_grid.ship.sections.keys():
 		loss.player_grid.ship.damage(cell, 5 if cell != last else 4)
@@ -106,14 +106,14 @@ func _run() -> void:
 	loss.advance(0.01)
 	_check(loss.state == BattleModel.State.DEFEAT, "Enemy cannot win")
 
-	var full_win := BattleModel.new(21)
+	var full_win := BattleModel.new(21, null, false)
 	full_win.enemy_scout_decision_remaining = 1000.0
 	for cell in full_win.enemy_grid.ship.sections.keys():
 		full_win._discover(true, cell)
 	for i in 15:
 		full_win.advance(5.0)
 	_check(full_win.state == BattleModel.State.VICTORY and full_win.enemy_grid.ship.get_total_hp() == 0, "Full automatic battle cannot be won")
-	var full_loss := BattleModel.new(22)
+	var full_loss := BattleModel.new(22, null, false)
 	for cell in full_loss.player_grid.ship.sections.keys():
 		full_loss._discover(false, cell)
 	for i in 15:

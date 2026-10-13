@@ -29,6 +29,12 @@ extends Resource
 @export var repair_cost := 8
 @export var repair_hp := 5
 @export var enemy_repair_threshold := 5
+@export var crew_total := 3
+@export var tactical_hp_multiplier := 2
+@export var gun_aim_time := 3.0
+@export var repair_order_time := 4.5
+@export var repair_order_cost := 4
+@export var enemy_order_interval := 3.0
 
 func validate() -> String:
 	if id.is_empty() or title.is_empty() or grid_size < 3 or grid_size > 10:
@@ -61,6 +67,8 @@ func validate() -> String:
 	for cost in speed_costs:
 		if cost <= 0:
 			return "Speed costs must be positive"
+	if crew_total < 2 or crew_total > 8 or tactical_hp_multiplier < 1 or gun_aim_time <= 0.0 or repair_order_time <= 0.0 or repair_order_cost < 0 or enemy_order_interval <= 0.0:
+		return "Tactical crew or action values are invalid"
 	if repair_cost <= 0 or repair_hp <= 0 or enemy_repair_threshold <= 0:
 		return "Repair values are invalid"
 	return ""
@@ -103,4 +111,10 @@ func to_rules() -> BattleRules:
 	rules.repair_cost = repair_cost
 	rules.repair_hp = repair_hp
 	rules.enemy_repair_threshold = enemy_repair_threshold
+	rules.crew_total = crew_total
+	rules.tactical_hp_multiplier = tactical_hp_multiplier
+	rules.gun_aim_time = gun_aim_time
+	rules.repair_order_time = repair_order_time
+	rules.repair_order_cost = repair_order_cost
+	rules.enemy_order_interval = enemy_order_interval
 	return rules

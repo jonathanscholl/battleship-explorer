@@ -1,30 +1,35 @@
 # Battleship Explorer
 
-A cozy, portrait pirate game prototype built with Godot 4.7.2. Milestones 1–5 and the scout and idle combat milestone are playable: choose one of three levels, send sector scouts across enemy waters, target a found ship, earn coins, and buy upgrades while both ships fight automatically. Victories unlock the next level and progress is saved locally. Original pixel art, effects, and audio now bring the battles to life.
+A portrait pirate tactics game built with Godot 4.7.2. Place your ship, send sector scouts, and manage a three-person crew. Scouts use one crew; aiming a shot or repairing uses two. You choose when to fire, while the enemy scouts and issues its own orders. Victories unlock three levels, with progress saved locally.
 
-The step-by-step agent build plan is in [docs/ROADMAP.md](docs/ROADMAP.md), with a separate implementation and acceptance guide for each of the seven milestones. [docs/GAME_DESIGN.md](docs/GAME_DESIGN.md) distinguishes current rules from planned ones.
+The [roadmap](docs/ROADMAP.md) and [current game design](docs/GAME_DESIGN.md) describe the rules and step-by-step milestone guides.
 
-## Run locally
+## Play
 
-Install [Godot 4.7.2](https://godotengine.org/download/) and run from this directory:
+Choose **First Encounter**. Tap **Your Waters** to place your ship; use **ROTATE** to change its direction and **SAIL!** to begin. The enemy does not act during placement.
+
+Tap hidden enemy waters to send a 2×2 scout. The crew member returns when the scan arrives. Once a ship section is found, tap it to select a target, then press **FIRE** to assign two crew to aim. The shot lands after the aim timer; press Fire again for another shot. Use **REPAIR** to assign two crew and spend four coins on a timed repair. You can scout while gunners aim or repairers work, but firing and repairing cannot run together. **ARMORY** pauses play while you buy Damage, Speed, or Scout Tempo upgrades with coins.
+
+Tap **SWAP** or the small preview to inspect your ship. **MENU** offers resume, restart, level selection, and audio controls. Restart returns to ship placement. Coins come from treasure, islands, and actual cannon damage. Browser audio begins after your first interaction.
+
+Progress is stored offline in `user://battleship_progress.json`. In the Web preview, it belongs to that browser and device; cleared site data can erase it. The save contains only completed and unlocked level IDs.
+
+## Run and test locally
+
+Install [Godot 4.7.2](https://godotengine.org/download/), then run:
 
 ```sh
 godot --path .
 ```
 
-Or open `project.godot` in the Godot editor and press Play. Mouse clicks and phone taps use the same grid interaction. Scouts reveal a 2×2 area after travel. Launch and route cooldowns pace exploration.
-
-Choose **First Encounter** to begin. Win to unlock **Pirate Scout**, then **Pirate Captain**. Tap hidden enemy tiles to send a scout. North, center, and south routes cover different rows; each scan arrives after a short travel time, and each route has its own cooldown. Treasure and islands award coins once discovered. Tap a found, living ship tile to select a cannon target. Each HP of actual cannon damage grants 1 coin. Buy **DAMAGE**, **SPEED**, **SCOUT**, or **REPAIR** during battle. Scout upgrades shorten both launch and route cooldowns. Tap **SWAP** or the small preview to inspect your ship. **MENU** pauses the battle and offers **RESUME**, **RESTART**, **LEVELS**, and **AUDIO**; the audio panel has separate music and sound-effect controls. Results offer **RETRY**, **LEVEL SELECT**, and **NEXT LEVEL** when unlocked. Browser audio begins after your first interaction.
-
-Progress is stored offline in `user://battleship_progress.json`. In the Web preview, it belongs to that browser and device; private browsing or cleared site data can erase it. For local development, delete that file from Godot's user data directory to reset progression. The save contains only completed and unlocked level IDs.
-
-## Test
+From this directory, validate with:
 
 ```sh
 godot --headless --path . --editor --quit
 godot --headless --path . --script res://tests/test_core.gd
 godot --headless --path . --script res://tests/test_ui.gd
 godot --headless --path . --script res://tests/test_scouts.gd
+godot --headless --path . --script res://tests/test_tactical.gd
 godot --headless --path . --script res://tests/test_battle.gd
 godot --headless --path . --script res://tests/test_economy.gd
 godot --headless --path . --script res://tests/test_levels.gd
@@ -32,11 +37,11 @@ godot --headless --path . --script res://tests/test_presentation.gd
 godot --headless --path . --quit-after 2
 ```
 
-The tests cover ship placement and HP, sector scanning, scout timing, pause/reset, hidden information, combat, coin rewards, purchases, repairs, level validation and generation, progression, defensive save loading, presentation timing and cleanup, and touch/view switching. The last command smoke tests the main scene.
+The tactical tests cover setup, invalid placement, crew conflicts, timed orders, pause, enemy scouting, retry, and manual victory. The other tests cover grids, combat, coins, saves, effects, and touch controls.
 
 ## Web preview
 
-Install the matching Godot 4.7.2 export templates, then:
+Install matching Godot 4.7.2 export templates, then:
 
 ```sh
 mkdir -p build/web
@@ -44,10 +49,8 @@ godot --headless --path . --export-release Web build/web/index.html
 python3 -m http.server 8000 --directory build/web
 ```
 
-Open `http://localhost:8000` in a browser. The web preset uses the Compatibility renderer and disables threads, so GitHub Pages does not need cross-origin isolation headers. The local build was checked in a desktop browser at a 390×844 viewport, including tile states, effects, and audio controls. A real iPhone Safari test is still needed.
+Open `http://localhost:8000`. The Web preset uses the Compatibility renderer without threads. GitHub Actions imports, tests, exports, and deploys pushes to `main`. The [public repository](https://github.com/jonathanscholl/battleship-explorer) and [phone preview](https://jonathanscholl.github.io/battleship-explorer/) are available. A physical iPhone Safari playtest remains open.
 
-The [public GitHub repository](https://github.com/jonathanscholl/battleship-explorer) is connected, and Pages uses GitHub Actions. On each push to `main`, Actions imports the project, runs tests, exports Web, uploads the build artifact, and deploys it. Pull requests validate and build without deploying. The [phone preview](https://jonathanscholl.github.io/battleship-explorer/) is live.
+## Layout and art
 
-## Layout and rendering
-
-The logical portrait canvas is 390×844. Controls and the grid position scale from the current viewport, with generous top and bottom margins for phone safe areas. The game uses Godot 2D's Compatibility renderer and nearest-neighbor canvas texture filtering. [Sprite source notes](assets/sprites/ART_NOTES.md) document the 32×32 art grid, palette, asset names, and generation prompts. `assets/audio/generate_audio.py` regenerates the compact WAV set.
+The logical portrait canvas is 390×844. Controls and the grid adapt to the viewport. The game uses nearest-neighbor texture filtering. [Sprite notes](assets/sprites/ART_NOTES.md) document the art grid and palette; `assets/audio/generate_audio.py` regenerates the compact WAV set.

@@ -41,6 +41,15 @@ var damage_button: Button
 var speed_button: Button
 var repair_button: Button
 var scout_button: Button
+var rotate_button: Button
+var launch_button: Button
+var fire_button: Button
+var crew_repair_button: Button
+var armory_button: Button
+var armory_overlay: ColorRect
+var armory_close_button: Button
+var placement_rotation := 0
+var placement_origin := Vector2i(-1, -1)
 var result_overlay: ColorRect
 var result_label: Label
 var result_logo: TextureRect
@@ -68,7 +77,7 @@ func _ready() -> void:
 	catalog = LevelCatalog.new()
 	progress = LevelProgress.new(catalog)
 	current_level = catalog.levels[0]
-	battle = BattleModel.new(0, current_level.to_rules())
+	battle = BattleModel.new(0, current_level.to_rules(), true)
 	grid = battle.enemy_grid
 	battle.tile_discovered.connect(_on_tile_discovered)
 	battle.shot_fired.connect(_on_shot_fired)
@@ -96,6 +105,16 @@ func _ready() -> void:
 	speed_button = _make_button("SPEED", _buy.bind(UpgradeState.Kind.SPEED))
 	repair_button = _make_button("REPAIR", _buy.bind(UpgradeState.Kind.REPAIR))
 	scout_button = _make_button("SCOUT +", _buy.bind(UpgradeState.Kind.SCOUT))
+	rotate_button = _make_button("ROTATE", _rotate_placement)
+	launch_button = _make_button("SAIL!", _begin_battle)
+	fire_button = _make_button("FIRE", _order_fire)
+	crew_repair_button = _make_button("REPAIR", _order_repair)
+	armory_button = _make_button("ARMORY", _open_armory)
+	_style_button(rotate_button, Color("278fb7"), 15)
+	_style_button(launch_button, Color("3ba765"), 15)
+	_style_button(fire_button, Color("d9443f"), 18)
+	_style_button(crew_repair_button, Color("48a256"), 16)
+	_style_button(armory_button, Color("9757bd"), 16)
 	_style_button(scout_button, Color("ca8c36"), 13)
 	_style_button(preview_button, Color("d38b31"), 13)
 	_style_button(menu_button, Color("754329"), 14)
@@ -152,9 +171,22 @@ func _ready() -> void:
 	sound_slider = _make_slider(audio.sound_volume, audio.set_sound_volume)
 	var done_button := _make_button("DONE", _close_settings, settings_overlay)
 	_style_button(done_button, PLANK_LIGHT, 17)
+	armory_overlay = ColorRect.new()
+	armory_overlay.color = Color(0.03, 0.13, 0.21, 0.94)
+	armory_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	armory_overlay.visible = false
+	add_child(armory_overlay)
+	_make_label("SHIP ARMORY", 28, SAND, HORIZONTAL_ALIGNMENT_CENTER, armory_overlay)
+	for button in [damage_button, speed_button, scout_button]:
+		button.reparent(armory_overlay)
+		_style_button(button, Color("8b633a"), 18)
+	armory_close_button = _make_button("BACK TO BATTLE", _close_armory, armory_overlay)
+	_style_button(armory_close_button, Color("3aa66a"), 18)
+	repair_button.visible = false
 	battle.set_paused(true)
 	resized.connect(_update_layout)
 	_update_layout()
+	_sync_mode_controls()
 	_update_level_buttons()
 	_update_hud()
 
@@ -241,6 +273,10 @@ func _update_layout() -> void:
 	menu_button.size = Vector2(68, 37)
 	scout_button.position = Vector2(112, 189)
 	scout_button.size = Vector2(75, 23)
+	rotate_button.position = Vector2(24, 215)
+	rotate_button.size = Vector2(75, 34)
+	launch_button.position = Vector2(108, 215)
+	launch_button.size = Vector2(77, 34)
 	preview_button.position = Vector2(preview_rect.position.x - 59, 167)
 	preview_button.size = Vector2(51, 43)
 	var main_top := maxf(preview_rect.end.y + 55, height * 0.31)
@@ -264,6 +300,12 @@ func _update_layout() -> void:
 	speed_button.size = Vector2(button_width, 79)
 	repair_button.position = Vector2(26 + button_width * 2.0, button_y)
 	repair_button.size = Vector2(button_width, 79)
+	fire_button.position = damage_button.position
+	fire_button.size = damage_button.size
+	crew_repair_button.position = speed_button.position
+	crew_repair_button.size = speed_button.size
+	armory_button.position = repair_button.position
+	armory_button.size = repair_button.size
 	pause_overlay.position = Vector2.ZERO
 	pause_overlay.size = size
 	var pause_title: Label = pause_overlay.get_child(0)
@@ -314,12 +356,25 @@ func _update_layout() -> void:
 	var done_button: Button = settings_overlay.get_child(5)
 	done_button.position = Vector2((width - 180) / 2.0, height * 0.69)
 	done_button.size = Vector2(180, 52)
+	armory_overlay.position = Vector2.ZERO
+	armory_overlay.size = size
+	var armory_title: Label = armory_overlay.get_child(0)
+	armory_title.position = Vector2(20, height * 0.21)
+	armory_title.size = Vector2(width - 40, 44)
+	for index in 3:
+		var armory_upgrade: Button = [damage_button, speed_button, scout_button][index]
+		armory_upgrade.position = Vector2(34, height * 0.32 + index * 73)
+		armory_upgrade.size = Vector2(width - 68, 58)
+	armory_close_button.position = Vector2(34, height * 0.32 + 3 * 73 + 20)
+	armory_close_button.size = Vector2(width - 68, 54)
 	queue_redraw()
 
 func _process(delta: float) -> void:
 	if battle == null:
 		return
 	battle.advance(delta)
+	if battle.tactical_mode:
+		_update_hud()
 	queue_redraw()
 
 func _notification(what: int) -> void:
@@ -329,7 +384,7 @@ func _notification(what: int) -> void:
 		battle.set_paused(true)
 		_update_hud()
 	elif what == NOTIFICATION_APPLICATION_FOCUS_IN or what == NOTIFICATION_WM_WINDOW_FOCUS_IN:
-		battle.set_paused((level_overlay != null and level_overlay.visible) or (settings_overlay != null and settings_overlay.visible) or (pause_overlay != null and pause_overlay.visible))
+		battle.set_paused((level_overlay != null and level_overlay.visible) or (settings_overlay != null and settings_overlay.visible) or (pause_overlay != null and pause_overlay.visible) or (armory_overlay != null and armory_overlay.visible))
 		_update_hud()
 
 func _gui_input(event: InputEvent) -> void:
@@ -344,9 +399,21 @@ func _gui_input(event: InputEvent) -> void:
 		point = event.position
 	else:
 		return
-	if level_overlay.visible or result_overlay.visible or settings_overlay.visible or pause_overlay.visible:
+	if level_overlay.visible or result_overlay.visible or settings_overlay.visible or pause_overlay.visible or armory_overlay.visible:
 		return
 	audio.unlock()
+	if battle.state == BattleModel.State.SETUP:
+		if grid_rect.has_point(point):
+			var setup_cell := Vector2i(int((point.x - grid_rect.position.x) / cell_size), int((point.y - grid_rect.position.y) / cell_size))
+			if battle.place_player_ship(setup_cell, placement_rotation):
+				placement_origin = setup_cell
+				hint_label.text = "Ship placed. Rotate or set sail!"
+			else:
+				hint_label.text = "Ship won't fit there - try another tile"
+			_update_hud()
+			queue_redraw()
+			accept_event()
+		return
 	if preview_rect.has_point(point):
 		_switch_view()
 		accept_event()
@@ -362,6 +429,8 @@ func _gui_input(event: InputEvent) -> void:
 		hint_label.text = "Already charted - choose hidden waters"
 	elif battle.player_send_scout(cell):
 		pass
+	elif battle.player_crew_available() < 1:
+		hint_label.text = "All crew busy - wait for an order"
 	elif battle.player_scouts.launch_remaining > 0.0:
 		hint_label.text = "Scout launch ready in %.1fs" % battle.player_scouts.launch_remaining
 	elif battle.player_scouts.is_pending(cell):
@@ -372,6 +441,8 @@ func _gui_input(event: InputEvent) -> void:
 	queue_redraw()
 
 func _switch_view() -> void:
+	if battle.state == BattleModel.State.SETUP:
+		return
 	effects.clear_effects()
 	showing_enemy = not showing_enemy
 	view_label.text = "ENEMY WATERS" if showing_enemy else "YOUR WATERS"
@@ -383,13 +454,17 @@ func _restart() -> void:
 	battle.start_battle()
 	battle.set_paused(false)
 	grid = battle.enemy_grid
-	showing_enemy = true
-	view_label.text = "ENEMY WATERS"
-	hint_label.text = "Tap enemy waters to send a scout"
+	showing_enemy = false
+	placement_rotation = 0
+	placement_origin = Vector2i(-1, -1)
+	view_label.text = "YOUR WATERS"
+	hint_label.text = "Tap your waters to place the ship"
 	result_overlay.visible = false
 	result_overlay.modulate.a = 1.0
 	level_overlay.visible = false
 	pause_overlay.visible = false
+	armory_overlay.visible = false
+	_sync_mode_controls()
 	_update_layout()
 	_update_hud()
 	queue_redraw()
@@ -402,12 +477,68 @@ func _start_level(index: int) -> void:
 	audio.play_sound("discover")
 	battle.rules = current_level.to_rules()
 	_restart()
-	hint_label.text = "%s - set sail!" % current_level.title
+	hint_label.text = "%s - place your ship" % current_level.title
 
 func _next_level() -> void:
 	var next_id := catalog.next_id(current_level.id)
 	if progress.is_unlocked(next_id):
 		_start_level(catalog.index_of(next_id))
+
+func _rotate_placement() -> void:
+	var next_rotation := (placement_rotation + 1) % 4
+	if placement_origin.x >= 0 and not battle.place_player_ship(placement_origin, next_rotation):
+		hint_label.text = "Can't rotate here - place in open water"
+		return
+	placement_rotation = next_rotation
+	hint_label.text = "Ship rotated. Tap to reposition or set sail"
+	queue_redraw()
+
+func _begin_battle() -> void:
+	if not battle.begin_battle():
+		hint_label.text = "Place your ship before setting sail"
+		return
+	showing_enemy = true
+	view_label.text = "ENEMY WATERS"
+	hint_label.text = "Scout, select a target, then FIRE"
+	_sync_mode_controls()
+	_update_hud()
+	queue_redraw()
+
+func _order_fire() -> void:
+	if battle.player_order_fire():
+		hint_label.text = "Gunners aiming - 2 crew busy"
+	else:
+		hint_label.text = "Select a live ship tile and free 2 crew"
+	_update_hud()
+
+func _order_repair() -> void:
+	if battle.player_order_repair():
+		hint_label.text = "Repair underway - 2 crew busy"
+	else:
+		hint_label.text = "Need damage, 2 free crew, and %d coins" % battle.rules.repair_order_cost
+	_update_hud()
+
+func _open_armory() -> void:
+	if battle.state != BattleModel.State.RUNNING:
+		return
+	battle.set_paused(true)
+	armory_overlay.visible = true
+	_update_hud()
+
+func _close_armory() -> void:
+	armory_overlay.visible = false
+	battle.set_paused(false)
+	_update_hud()
+
+func _sync_mode_controls() -> void:
+	var setting_up := battle.state == BattleModel.State.SETUP
+	rotate_button.visible = setting_up
+	launch_button.visible = setting_up
+	fire_button.visible = not setting_up
+	crew_repair_button.visible = not setting_up
+	armory_button.visible = not setting_up
+	preview_button.visible = not setting_up
+	launch_button.disabled = battle.player_grid.ship.sections.is_empty()
 
 func _open_level_select() -> void:
 	_cancel_transition()
@@ -438,7 +569,7 @@ func _close_pause() -> void:
 
 func _close_settings() -> void:
 	settings_overlay.visible = false
-	battle.set_paused(level_overlay.visible)
+	battle.set_paused(level_overlay.visible or armory_overlay.visible)
 	_update_hud()
 
 func _cancel_transition() -> void:
@@ -509,7 +640,9 @@ func _on_economy_changed(_by_player: bool) -> void:
 	_update_hud()
 
 func _on_ship_repaired(by_player: bool, restored_hp: int) -> void:
-	if not by_player:
+	if by_player:
+		hint_label.text = "Repair complete! +%d HP" % restored_hp
+	else:
 		hint_label.text = "Enemy repaired +%d HP - fire again!" % restored_hp
 	_update_hud()
 	queue_redraw()
@@ -535,7 +668,7 @@ func _update_hud() -> void:
 	coin_label.text = "%d" % battle.player_upgrades.coins
 	level_label.text = "LEVEL %d" % (catalog.index_of(current_level.id) + 1)
 	var upgrades := battle.player_upgrades
-	var running := battle.state == BattleModel.State.RUNNING and not battle.paused
+	var running := battle.state == BattleModel.State.RUNNING and (not battle.paused or armory_overlay.visible)
 	var damage_cost := upgrades.next_cost(UpgradeState.Kind.DAMAGE)
 	var speed_cost := upgrades.next_cost(UpgradeState.Kind.SPEED)
 	damage_button.text = "DAMAGE +\n%s" % ["MAX" if damage_cost < 0 else "%d GOLD" % damage_cost]
@@ -547,6 +680,12 @@ func _update_hud() -> void:
 	var scout_cost := upgrades.next_cost(UpgradeState.Kind.SCOUT)
 	scout_button.text = "MAX" if scout_cost < 0 else "SCOUT %d" % scout_cost
 	scout_button.disabled = not upgrades.can_purchase(UpgradeState.Kind.SCOUT, running)
+	if battle.tactical_mode:
+		launch_button.disabled = battle.player_grid.ship.sections.is_empty()
+		fire_button.disabled = not battle.player_can_fire()
+		crew_repair_button.disabled = not battle.player_can_repair()
+		fire_button.text = "AIMING\n%.1fs" % battle.player_order["remaining"] if not battle.player_order.is_empty() and battle.player_order["kind"] == "fire" else "FIRE\n2 CREW"
+		crew_repair_button.text = "REPAIRING\n%.1fs" % battle.player_order["remaining"] if not battle.player_order.is_empty() and battle.player_order["kind"] == "repair" else "REPAIR\n2 CREW + %dG" % battle.rules.repair_order_cost
 
 func _draw() -> void:
 	draw_texture_rect(OCEAN_BACKGROUND, Rect2(Vector2.ZERO, size), false)
@@ -558,6 +697,9 @@ func _draw() -> void:
 	draw_string(PIXEL_FONT, Vector2(106, 48), "ENEMY", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color("ffe3a1"))
 	_draw_heart(Vector2(113, 74), 11)
 	_draw_hp_bar(Vector2(133, 65), size.x - 308, battle.enemy_grid.ship.get_total_hp(), battle.enemy_grid.ship.get_max_hp(), Color("f34c4a"))
+	if battle.tactical_mode and not battle.enemy_order.is_empty():
+		var enemy_action := "AIMING" if battle.enemy_order["kind"] == "fire" else "REPAIRING"
+		draw_string(PIXEL_FONT, Vector2(111, 91), "ENEMY %s %.0fs" % [enemy_action, ceilf(battle.enemy_order["remaining"])], HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color("ffe3a1"))
 	draw_texture_rect(COIN_SPRITE, Rect2(size.x - 112, 44, 32, 32), false)
 	_draw_wood_panel(Rect2(18, 106, 88, 26), true)
 	_draw_wood_panel(Rect2(preview_rect.position.x - 6, preview_rect.position.y - 31, preview_rect.size.x + 12, 28), true)
@@ -567,16 +709,20 @@ func _draw() -> void:
 	_draw_grid(grid_rect, showing_enemy)
 	_draw_grid_frame(preview_rect, true)
 	_draw_grid(preview_rect, not showing_enemy)
-	_draw_scout_status()
+	if battle.state == BattleModel.State.SETUP:
+		_draw_setup_status()
+	else:
+		_draw_scout_status()
 	_draw_chamfer(Rect2(25, hint_label.position.y - 3, size.x - 50, 26), Color(0.02, 0.16, 0.25, 0.84), 5)
 	_draw_wood_panel(Rect2(14, size.y - 169, size.x - 28, 66))
 	_draw_sprite(SHIP_V2, Rect2(11, size.y - 189, 99, 99))
 	draw_string(PIXEL_FONT, Vector2(106, size.y - 145), "YOUR SHIP", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color("ffe3a1"))
 	_draw_heart(Vector2(114, size.y - 125), 11)
 	_draw_hp_bar(Vector2(134, size.y - 135), size.x - 238, battle.player_grid.ship.get_total_hp(), battle.player_grid.ship.get_max_hp(), Color("6de94a"))
-	_draw_upgrade_card(damage_button.get_rect(), Color("ed4741"), Color("a81f31"), "DAMAGE +", battle.player_upgrades.next_cost(UpgradeState.Kind.DAMAGE), CANNONBALL_ICON, damage_button)
-	_draw_upgrade_card(speed_button.get_rect(), Color("8d51dc"), Color("593098"), "SPEED +", battle.player_upgrades.next_cost(UpgradeState.Kind.SPEED), STOPWATCH_ICON, speed_button)
-	_draw_upgrade_card(repair_button.get_rect(), Color("67c44b"), Color("31813e"), "REPAIR", battle.player_upgrades.next_cost(UpgradeState.Kind.REPAIR), REPAIR_ICON, repair_button)
+	if not battle.tactical_mode:
+		_draw_upgrade_card(damage_button.get_rect(), Color("ed4741"), Color("a81f31"), "DAMAGE +", battle.player_upgrades.next_cost(UpgradeState.Kind.DAMAGE), CANNONBALL_ICON, damage_button)
+		_draw_upgrade_card(speed_button.get_rect(), Color("8d51dc"), Color("593098"), "SPEED +", battle.player_upgrades.next_cost(UpgradeState.Kind.SPEED), STOPWATCH_ICON, speed_button)
+		_draw_upgrade_card(repair_button.get_rect(), Color("67c44b"), Color("31813e"), "REPAIR", battle.player_upgrades.next_cost(UpgradeState.Kind.REPAIR), REPAIR_ICON, repair_button)
 
 func _draw_chamfer(rect: Rect2, fill: Color, cut: float) -> void:
 	draw_colored_polygon(PackedVector2Array([
@@ -610,11 +756,17 @@ func _draw_upgrade_card(rect: Rect2, fill: Color, dark: Color, title: String, co
 	draw_texture_rect(COIN_SPRITE, Rect2(rect.position + Vector2(49, 45), Vector2(18, 18)), false)
 	draw_string(PIXEL_FONT, rect.position + Vector2(67, 61), "MAX" if cost < 0 else "%d" % cost, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color("ffedaa") if not button.disabled else Color("ffe4a0"))
 
+func _draw_setup_status() -> void:
+	var panel := Rect2(17, 184, 174, 77)
+	_draw_chamfer(panel.grow(2), INK, 7)
+	_draw_chamfer(panel, Color("173c59"), 5)
+	draw_string(PIXEL_FONT, panel.position + Vector2(9, 17), "PLACE YOUR SHIP", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color("ffde97"))
+
 func _draw_scout_status() -> void:
 	var panel := Rect2(17, 184, 174, 77)
 	_draw_chamfer(panel.grow(2), INK, 7)
 	_draw_chamfer(panel, Color("173c59"), 5)
-	draw_string(PIXEL_FONT, panel.position + Vector2(9, 17), "SCOUTS", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color("ffde97"))
+	draw_string(PIXEL_FONT, panel.position + Vector2(9, 17), "CREW %d/%d" % [battle.player_crew_available(), battle.rules.crew_total], HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color("ffde97"))
 	var colors := [Color("ffcd64"), Color("6ce9ef"), Color("ff9873")]
 	for route in ScoutFleet.ROUTE_NAMES.size():
 		var rows := battle.player_scouts.route_rows(route)
@@ -663,7 +815,7 @@ func _draw_grid(area: Rect2, enemy_waters: bool) -> void:
 			var inset := 2.0 if area == grid_rect else 1.0
 			var kind := knowledge.visible_kind(cell)
 			var own_ship := not enemy_waters and own_grid.ship.has_section(cell)
-			var hidden := kind == GridModel.TileKind.HIDDEN and not own_ship
+			var hidden := kind == GridModel.TileKind.HIDDEN and not own_ship and not (battle.state == BattleModel.State.SETUP and not enemy_waters)
 			draw_rect(rect.grow(-inset), Color("38e4f6"))
 			draw_rect(rect.grow(-inset - 2), Color("07517f") if hidden else Color("0b92ca"))
 			draw_rect(Rect2(rect.position + Vector2(inset + 3, inset + 3), Vector2(tile - inset * 2 - 6, 2 if area == grid_rect else 1)), Color("57b9d6") if hidden else Color("7ef5ff"))
@@ -674,7 +826,7 @@ func _draw_grid(area: Rect2, enemy_waters: bool) -> void:
 				draw_rect(Rect2(rect.position + Vector2(tile * 0.64, tile * 0.77), Vector2(tile * 0.17, 2)), Color("146c99"))
 			if not hidden:
 				draw_rect(Rect2(rect.position + Vector2(tile * 0.11, tile * 0.12), Vector2(tile * 0.72, 2)), Color("60dfff", 0.45))
-			if kind == GridModel.TileKind.HIDDEN and not own_ship:
+			if hidden:
 				if area == grid_rect:
 					draw_string(PIXEL_FONT, rect.position + Vector2(0, tile * 0.70), "?", HORIZONTAL_ALIGNMENT_CENTER, tile, int(tile * 0.53), Color("7bc9e8"))
 			elif kind == GridModel.TileKind.WATER:
