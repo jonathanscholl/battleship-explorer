@@ -1,4 +1,4 @@
-# Milestone 6 — Mobile validation and export preparation
+# Milestone 7 — Mobile validation and export preparation
 
 **Status:** Planned. **Outcome:** The phone-first Web preview is reliable on real iPhones, with a clear path to native iOS and later Android builds.
 

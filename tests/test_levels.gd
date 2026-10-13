@@ -27,7 +27,7 @@ func _run() -> void:
 			_check(battle.player_grid.ship.get_total_hp() == level.player_shape.size() * level.player_section_hp, "Player HP differs from resource")
 			_check(battle.enemy_grid.ship.get_total_hp() == level.enemy_shape.size() * level.enemy_section_hp, "Enemy HP differs from resource")
 			_check(battle.player_upgrades.coins == level.player_starting_coins and battle.enemy_upgrades.coins == level.enemy_starting_coins, "Starting coins differ from resource")
-			_check(battle.player_cannon.interval == level.cannon_interval and battle.enemy_discovery_remaining == level.enemy_discovery_interval, "Timers differ from resource")
+			_check(battle.player_cannon.interval == level.cannon_interval and battle.enemy_scout_decision_remaining == level.enemy_scout_launch_interval, "Timers differ from resource")
 			for grid in [battle.player_grid, battle.enemy_grid]:
 				_check(grid._special.size() == level.treasure_count + level.island_count, "Special count wrong")
 				for cell in grid._special:
@@ -96,7 +96,7 @@ func _run() -> void:
 	_check(first_battle.state == BattleModel.State.RUNNING and first_battle.player_grid.ship.get_total_hp() == 12, "Retry after loss did not reset")
 	first_battle.player_upgrades.grant_coins(10)
 	first_battle.purchase_player(UpgradeState.Kind.DAMAGE)
-	first_battle.player_discover(first_battle.enemy_grid.ship.sections.keys()[0])
+	first_battle._discover(true, first_battle.enemy_grid.ship.sections.keys()[0])
 	screen.call("_restart")
 	_check(first_battle.player_upgrades.coins == 4 and first_battle.player_upgrades.damage_level == 1 and first_battle.player_knowledge.revealed_count() == 0 and first_battle.player_cannon.target == Vector2i(-1, -1), "Retry retained temporary state")
 	var target: Vector2i = first_battle.enemy_grid.ship.sections.keys()[0]

@@ -15,8 +15,11 @@ extends Resource
 @export var treasure_coins := 10
 @export var island_coins := 5
 @export var damage_coins_per_hp := 1
-@export var player_discovery_interval := 0.8
-@export var enemy_discovery_interval := 2.5
+@export var scout_scan_width := 2
+@export var scout_travel_time := 1.6
+@export var scout_cooldown := 12.0
+@export var player_scout_launch_interval := 4.0
+@export var enemy_scout_launch_interval := 7.0
 @export var cannon_interval := 5.0
 @export var cannon_damage := 1
 @export var damage_values: Array[int] = [1, 2, 3, 4]
@@ -34,7 +37,9 @@ func validate() -> String:
 		return "Ship HP or starting coins are invalid"
 	if treasure_count < 0 or island_count < 0 or treasure_coins < 0 or island_coins < 0 or damage_coins_per_hp < 0:
 		return "Special tile or reward values are invalid"
-	if player_discovery_interval <= 0.0 or enemy_discovery_interval <= 0.0 or cannon_interval <= 0.0 or cannon_damage <= 0:
+	if scout_scan_width < 2 or scout_scan_width > mini(3, grid_size) or scout_travel_time <= 0.0 or scout_cooldown <= 0.0:
+		return "Scout range or timing is invalid"
+	if player_scout_launch_interval <= 0.0 or enemy_scout_launch_interval <= 0.0 or cannon_interval <= 0.0 or cannon_damage <= 0:
 		return "Time interval or cannon damage is invalid"
 	if not _shape_fits(player_shape) or not _shape_fits(enemy_shape):
 		return "A ship shape is disconnected or cannot fit"
@@ -84,8 +89,11 @@ func to_rules() -> BattleRules:
 	rules.treasure_coins = treasure_coins
 	rules.island_coins = island_coins
 	rules.damage_coins_per_hp = damage_coins_per_hp
-	rules.player_discovery_interval = player_discovery_interval
-	rules.enemy_discovery_interval = enemy_discovery_interval
+	rules.scout_scan_width = scout_scan_width
+	rules.scout_travel_time = scout_travel_time
+	rules.scout_cooldown = scout_cooldown
+	rules.player_scout_launch_interval = player_scout_launch_interval
+	rules.enemy_scout_launch_interval = enemy_scout_launch_interval
 	rules.cannon_interval = cannon_interval
 	rules.cannon_damage = cannon_damage
 	rules.damage_values = damage_values.duplicate()

@@ -5,6 +5,7 @@ signal tile_discovered(by_player: bool, cell: Vector2i, kind: int)
 signal shot_fired(by_player: bool, cell: Vector2i, actual_damage: int, section_hp: int, ship_hp: int)
 signal battle_finished(result: int)
 signal economy_changed(by_player: bool)
+signal scout_launched(by_player: bool, route: int, cells: Array[Vector2i])
 
 enum State { RUNNING, VICTORY, DEFEAT }
 
@@ -18,10 +19,11 @@ var enemy_knowledge: GridKnowledge
 var player_cannon: CannonModel
 var enemy_cannon: CannonModel
 var enemy_ai: EnemyAI
+var player_scouts: ScoutFleet
+var enemy_scouts: ScoutFleet
 var player_upgrades: UpgradeState
 var enemy_upgrades: UpgradeState
-var player_discovery_remaining := 0.0
-var enemy_discovery_remaining := 2.5
+var enemy_scout_decision_remaining := 7.0
 
 func _init(seed_value: int = 0, battle_rules: BattleRules = null) -> void:
 	rules = battle_rules if battle_rules != null else BattleRules.new()
@@ -43,26 +45,29 @@ func start_battle(seed_value: int = 0) -> void:
 	player_cannon = CannonModel.new(rules.cannon_interval, rules.cannon_damage)
 	enemy_cannon = CannonModel.new(rules.cannon_interval, rules.cannon_damage)
 	enemy_ai = EnemyAI.new(enemy_knowledge, 0 if seed_value == 0 else seed_value * 2 + 3)
-	player_upgrades = UpgradeState.new(rules, player_cannon, player_grid.ship)
-	enemy_upgrades = UpgradeState.new(rules, enemy_cannon, enemy_grid.ship)
+	player_scouts = ScoutFleet.new(rules.grid_size, rules.scout_scan_width, rules.scout_travel_time, rules.player_scout_launch_interval, rules.scout_cooldown)
+	enemy_scouts = ScoutFleet.new(rules.grid_size, rules.scout_scan_width, rules.scout_travel_time, rules.enemy_scout_launch_interval, rules.scout_cooldown)
+	player_upgrades = UpgradeState.new(rules, player_cannon, player_grid.ship, player_scouts)
+	enemy_upgrades = UpgradeState.new(rules, enemy_cannon, enemy_grid.ship, enemy_scouts)
 	player_upgrades.changed.connect(_emit_economy_changed.bind(true))
 	enemy_upgrades.changed.connect(_emit_economy_changed.bind(false))
 	player_upgrades.grant_coins(rules.player_starting_coins)
 	enemy_upgrades.grant_coins(rules.enemy_starting_coins)
-	player_discovery_remaining = 0.0
-	enemy_discovery_remaining = rules.enemy_discovery_interval
+	enemy_scout_decision_remaining = rules.enemy_scout_launch_interval
 	state = State.RUNNING
 	paused = false
 
 func set_paused(value: bool) -> void:
 	paused = value
 
-func player_discover(cell: Vector2i) -> bool:
-	if paused or state != State.RUNNING or player_discovery_remaining > 0.0:
+func player_send_scout(cell: Vector2i) -> bool:
+	if paused or state != State.RUNNING:
 		return false
-	if not _discover(true, cell):
+	var plan := player_scouts.dispatch_at(cell, player_knowledge)
+	if plan.is_empty():
 		return false
-	player_discovery_remaining = rules.player_discovery_interval
+	var cells: Array[Vector2i] = plan["cells"]
+	scout_launched.emit(true, plan["route"], cells)
 	return true
 
 func purchase_player(kind: UpgradeState.Kind) -> bool:
@@ -98,13 +103,21 @@ func _discover(by_player: bool, cell: Vector2i) -> bool:
 func advance(delta: float) -> void:
 	if paused or state != State.RUNNING or delta <= 0.0:
 		return
-	player_discovery_remaining = maxf(0.0, player_discovery_remaining - delta)
-	enemy_discovery_remaining -= delta
-	if enemy_discovery_remaining <= 0.0:
-		enemy_discovery_remaining = rules.enemy_discovery_interval
-		var choice := enemy_ai.choose_discovery()
+	for mission in player_scouts.advance(delta):
+		for cell in mission["cells"]:
+			_discover(true, cell)
+	for mission in enemy_scouts.advance(delta):
+		for cell in mission["cells"]:
+			_discover(false, cell)
+	enemy_scout_decision_remaining -= delta
+	if enemy_scout_decision_remaining <= 0.0:
+		enemy_scout_decision_remaining = enemy_scouts.launch_interval
+		var choice := enemy_ai.choose_scout_target(enemy_scouts)
 		if choice.x >= 0:
-			_discover(false, choice)
+			var plan := enemy_scouts.dispatch_at(choice, enemy_knowledge)
+			if not plan.is_empty():
+				var cells: Array[Vector2i] = plan["cells"]
+				scout_launched.emit(false, plan["route"], cells)
 	# Resolve the player's due shot first. A terminal result prevents the enemy shot.
 	if player_cannon.advance(delta, player_knowledge):
 		_fire(true)
@@ -118,6 +131,8 @@ func _enemy_purchase() -> void:
 	if damaged >= rules.enemy_repair_threshold and enemy_upgrades.purchase(UpgradeState.Kind.REPAIR, true):
 		return
 	if enemy_upgrades.purchase(UpgradeState.Kind.DAMAGE, true):
+		return
+	if enemy_upgrades.purchase(UpgradeState.Kind.SCOUT, true):
 		return
 	enemy_upgrades.purchase(UpgradeState.Kind.SPEED, true)
 

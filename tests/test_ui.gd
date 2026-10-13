@@ -38,24 +38,25 @@ func _run() -> void:
 	tap.position = grid_rect.position + Vector2.ONE * cell_size * 0.5
 	screen.call("_gui_input", tap)
 	var grid: GridModel = screen.get("grid")
-	if grid.get_revealed_count() != 1:
-		push_error("Touch did not reveal a tile")
+	if grid.get_revealed_count() != 0 or screen.get("battle").player_scouts.pending.size() != 1:
+		push_error("Touch did not dispatch a scout")
 		quit(1)
 		return
 	screen.call("_gui_input", tap)
-	if grid.get_revealed_count() != 1:
-		push_error("Repeated touch changed the grid")
+	if screen.get("battle").player_scouts.pending.size() != 1:
+		push_error("Repeated touch dispatched another scout")
 		quit(1)
 		return
 	var battle: BattleModel = screen.get("battle")
-	if battle.player_knowledge.revealed_count() != 1 or battle.enemy_knowledge.revealed_count() != 0:
+	battle.advance(battle.rules.scout_travel_time)
+	if battle.player_knowledge.revealed_count() != 4 or battle.enemy_knowledge.revealed_count() != 0:
 		push_error("Touch changed the wrong grid")
 		quit(1)
 		return
 	var preview: Rect2 = screen.get("preview_rect")
 	tap.position = preview.position + preview.size * 0.5
 	screen.call("_gui_input", tap)
-	if screen.get("showing_enemy") or battle.player_knowledge.revealed_count() != 1:
+	if screen.get("showing_enemy") or battle.player_knowledge.revealed_count() != 4:
 		push_error("Preview tap did not swap views or changed game state")
 		quit(1)
 		return
@@ -85,7 +86,18 @@ func _run() -> void:
 		push_error("Damage button did not purchase or update")
 		quit(1)
 		return
-	print("PASS: touch, view switching, upgrade buttons")
+	var scout_button: Button = screen.get("scout_button")
+	battle.player_upgrades.grant_coins(maxi(0, 12 - battle.player_upgrades.coins))
+	if scout_button.disabled:
+		push_error("Affordable scout upgrade did not enable")
+		quit(1)
+		return
+	screen.call("_buy", UpgradeState.Kind.SCOUT)
+	if battle.player_upgrades.scout_level != 2 or scout_button.text.find("22") < 0:
+		push_error("Scout upgrade button did not purchase or update")
+		quit(1)
+		return
+	print("PASS: touch, scouts, view switching, upgrade buttons")
 	screen.get("effects").clear_effects()
 	screen.queue_free()
 	for i in 6:

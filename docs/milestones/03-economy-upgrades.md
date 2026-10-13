@@ -45,4 +45,4 @@ No second currency, inventory, skill tree, permanent upgrades, or meta progressi
 
 - Godot 4.7.2 import, core (20 checks), battle (38 checks), economy (74 checks), UI interaction, and main-scene smoke tests passed.
 - Release Web export succeeded. The upgrade layout was checked in a desktop browser at a 390×844 phone viewport.
-- [GitHub Actions run 38157478936](https://github.com/jonathanscholl/battleship-explorer/actions/runs/38157478936) passed validation and Pages deployment. Physical iPhone Safari and game-balance playtests remain for Milestone 6 and later tuning.
+- [GitHub Actions run 38157478936](https://github.com/jonathanscholl/battleship-explorer/actions/runs/38157478936) passed validation and Pages deployment. Physical iPhone Safari and game-balance playtests remain for Milestone 7 and later tuning.

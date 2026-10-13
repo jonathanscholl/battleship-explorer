@@ -43,11 +43,11 @@ func _run() -> void:
 		elif battle.enemy_grid._special[cell] == GridModel.TileKind.ISLAND:
 			island_cell = cell
 	_check(battle.player_knowledge.visible_kind(treasure_cell) == GridModel.TileKind.HIDDEN, "Preview leaked treasure")
-	_check(battle.player_discover(treasure_cell), "Treasure discovery failed")
+	_check(battle._discover(true, treasure_cell), "Treasure discovery failed")
 	_check(battle.player_upgrades.coins == 10, "Treasure reward wrong")
-	_check(not battle.player_discover(treasure_cell) and battle.player_upgrades.coins == 10, "Treasure paid twice")
+	_check(not battle._discover(true, treasure_cell) and battle.player_upgrades.coins == 10, "Treasure paid twice")
 	battle.advance(0.8)
-	_check(battle.player_discover(island_cell) and battle.player_upgrades.coins == 15, "Island reward wrong")
+	_check(battle._discover(true, island_cell) and battle.player_upgrades.coins == 15, "Island reward wrong")
 	_check(battle.enemy_upgrades.coins == 0, "Player discovery paid enemy")
 	var ship_cell: Vector2i = battle.enemy_grid.ship.sections.keys()[0]
 	battle._discover(true, ship_cell)

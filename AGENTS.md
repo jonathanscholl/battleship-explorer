@@ -2,14 +2,14 @@
 
 ## Milestone workflow
 
-Read [docs/ROADMAP.md](docs/ROADMAP.md) and the guide for the first incomplete milestone before implementing features. Follow its build order and acceptance gate. Milestones 1–5 are complete; Milestone 6 is next. Keep every milestone runnable, update tests and documentation with rule changes, and verify the GitHub Pages build after pushing a completed milestone. Do not mark a planned feature as implemented based only on its documentation.
+Read [docs/ROADMAP.md](docs/ROADMAP.md) and the guide for the first incomplete milestone before implementing features. Follow its build order and acceptance gate. Milestones 1–5 are complete; Milestone 6 adds sector scouts and idle combat, followed by mobile validation in Milestone 7. Keep every milestone runnable, update tests and documentation with rule changes, and verify the GitHub Pages build after pushing a completed milestone. Do not mark a planned feature as implemented based only on its documentation.
 
 ## Architecture
 
 - `scripts/grid/ship_model.gd` owns ship sections and HP. Placement is validated before mutating state.
 - `scripts/grid/grid_model.gd` owns tile discovery and the ship's placement. `visible_kind()` is the view-safe API: hidden tiles return `HIDDEN` regardless of contents.
 - `scripts/battle/grid_knowledge.gd` is each attacker's only view of the opposing grid; the AI receives this view, never the hidden grid or ship dictionary.
-- `scripts/battle/battle_model.gd` owns two grids, discovery cooldowns, simulation order, and terminal results. `scripts/combat/cannon_model.gd` handles target/cooldown rules; `scripts/ai/enemy_ai.gd` chooses hidden discovery cells.
+- `scripts/battle/battle_model.gd` owns two grids, scout travel and cooldowns, simulation order, and terminal results. `scripts/combat/cannon_model.gd` handles target/cooldown rules; `scripts/ai/enemy_ai.gd` chooses scout targets from revealed knowledge. `scripts/scouts/scout_fleet.gd` owns sector routes, scan areas, and mission timing.
 - `scripts/battle/battle_rules.gd` holds current balance values. `scripts/upgrades/upgrade_state.gd` owns each side's coins and purchases; both sides use the same costs and effects.
 - `resources/levels/level_definition.gd` validates authored level Resources and converts them to battle rules. `scripts/progression/level_catalog.gd` lists level order; `level_progress.gd` stores completed/unlocked IDs in `user://`.
 - `scripts/ui/main_screen.gd` handles input, view switching, HUD, and temporary tile drawing. Rules belong in model scripts, not drawing code.
@@ -30,4 +30,4 @@ Read [docs/ROADMAP.md](docs/ROADMAP.md) and the guide for the first incomplete m
 
 Keep GDScript typed where practical, use signals between major systems, and keep gameplay independent of animation or sound timing. Preserve the portrait layout, large touch targets, friendly colors, and clear hidden/revealed states. Do not add complex progression or networking.
 
-Run `godot --headless --path . --editor --quit`, all six scripts in `tests/`, and a main-scene smoke test after changes. Add meaningful model tests for new rules. Update `docs/GAME_DESIGN.md`, README, and the active milestone guide when gameplay or build behavior changes.
+Run `godot --headless --path . --editor --quit`, all scripts in `tests/`, and a main-scene smoke test after changes. Add meaningful model tests for new rules. Update `docs/GAME_DESIGN.md`, README, and the active milestone guide when gameplay or build behavior changes.

@@ -4,7 +4,7 @@
 
 ## Delivered and checked
 
-`BattleModel` owns fresh player/enemy grids, discovery timers, cannon models, and terminal state. `GridKnowledge` masks hidden positions for each attacker; `EnemyAI` receives only its knowledge view. The player can discover and choose targets, and both cannons fire automatically. The screen has one large grid, a small opposite-side preview, view switching, HP, restart, and win/loss overlays. Focus loss pauses the battle. Automated battle tests cover 38 checks, including full wins and losses and the player-first tie rule. A local release Web export was inspected at 390×844 with discovery, switching, and restart. Physical iPhone Safari testing remains for Milestone 6.
+`BattleModel` owns fresh player/enemy grids, discovery timers, cannon models, and terminal state. `GridKnowledge` masks hidden positions for each attacker; `EnemyAI` receives only its knowledge view. The player can discover and choose targets, and both cannons fire automatically. The screen has one large grid, a small opposite-side preview, view switching, HP, restart, and win/loss overlays. Focus loss pauses the battle. Automated battle tests cover 38 checks, including full wins and losses and the player-first tie rule. A local release Web export was inspected at 390×844 with discovery, switching, and restart. Physical iPhone Safari testing remains for Milestone 7.
 
 ## Starting point
 

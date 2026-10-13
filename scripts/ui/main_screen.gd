@@ -40,6 +40,7 @@ var levels_button: Button
 var damage_button: Button
 var speed_button: Button
 var repair_button: Button
+var scout_button: Button
 var result_overlay: ColorRect
 var result_label: Label
 var result_logo: TextureRect
@@ -73,6 +74,7 @@ func _ready() -> void:
 	battle.shot_fired.connect(_on_shot_fired)
 	battle.battle_finished.connect(_on_battle_finished)
 	battle.economy_changed.connect(_on_economy_changed)
+	battle.scout_launched.connect(_on_scout_launched)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	audio = GameAudio.new()
 	add_child(audio)
@@ -82,7 +84,7 @@ func _ready() -> void:
 	level_label = _make_label("", 15, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	coin_label = _make_label("", 25, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT)
 	player_label = _make_label("", 20, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT)
-	hint_label = _make_label("Tap hidden waters to explore", 17, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	hint_label = _make_label("Tap enemy waters to send a scout", 17, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	view_label = _make_label("ENEMY WATERS", 23, Color("372615"), HORIZONTAL_ALIGNMENT_CENTER)
 	preview_button = _make_button("SWAP", _switch_view)
 	menu_button = _make_button("MENU", _open_pause)
@@ -92,6 +94,8 @@ func _ready() -> void:
 	damage_button = _make_button("DAMAGE", _buy.bind(UpgradeState.Kind.DAMAGE))
 	speed_button = _make_button("SPEED", _buy.bind(UpgradeState.Kind.SPEED))
 	repair_button = _make_button("REPAIR", _buy.bind(UpgradeState.Kind.REPAIR))
+	scout_button = _make_button("SCOUT +", _buy.bind(UpgradeState.Kind.SCOUT))
+	_style_button(scout_button, Color("ca8c36"), 13)
 	_style_button(preview_button, Color("d38b31"), 13)
 	_style_button(menu_button, Color("754329"), 14)
 	for button in [restart_button, levels_button, settings_button]:
@@ -234,6 +238,8 @@ func _update_layout() -> void:
 	level_label.size = Vector2(88, 25)
 	menu_button.position = Vector2(18, 143)
 	menu_button.size = Vector2(68, 37)
+	scout_button.position = Vector2(112, 189)
+	scout_button.size = Vector2(75, 23)
 	preview_button.position = Vector2(preview_rect.position.x - 59, 167)
 	preview_button.size = Vector2(51, 43)
 	var main_top := maxf(preview_rect.end.y + 55, height * 0.31)
@@ -351,8 +357,16 @@ func _gui_input(event: InputEvent) -> void:
 	if battle.player_knowledge.visible_kind(cell) == GridModel.TileKind.SHIP:
 		if battle.player_select_target(cell):
 			hint_label.text = "Cannon target selected"
-	elif battle.player_discover(cell):
+	elif battle.player_knowledge.is_revealed(cell):
+		hint_label.text = "Already charted - choose hidden waters"
+	elif battle.player_send_scout(cell):
 		pass
+	elif battle.player_scouts.launch_remaining > 0.0:
+		hint_label.text = "Scout launch ready in %.1fs" % battle.player_scouts.launch_remaining
+	elif battle.player_scouts.is_pending(cell):
+		hint_label.text = "A scout is already scanning there"
+	else:
+		hint_label.text = "That route is recharging"
 	accept_event()
 	queue_redraw()
 
@@ -370,7 +384,7 @@ func _restart() -> void:
 	grid = battle.enemy_grid
 	showing_enemy = true
 	view_label.text = "ENEMY WATERS"
-	hint_label.text = "Tap hidden waters to explore"
+	hint_label.text = "Tap enemy waters to send a scout"
 	result_overlay.visible = false
 	result_overlay.modulate.a = 1.0
 	level_overlay.visible = false
@@ -494,6 +508,14 @@ func _on_economy_changed(by_player: bool) -> void:
 	if by_player:
 		_update_hud()
 
+func _on_scout_launched(by_player: bool, route: int, cells: Array[Vector2i]) -> void:
+	if by_player:
+		audio.play_sound("discover")
+		hint_label.text = "%s scout searching %d tiles" % [ScoutFleet.ROUTE_NAMES[route].capitalize(), cells.size()]
+	else:
+		hint_label.text = "Enemy scout sent toward your waters"
+	queue_redraw()
+
 func _cell_center(by_player: bool, cell: Vector2i) -> Vector2:
 	var area := grid_rect if by_player == showing_enemy else preview_rect
 	var tile := area.size.x / battle.rules.grid_size
@@ -516,6 +538,9 @@ func _update_hud() -> void:
 	damage_button.disabled = not upgrades.can_purchase(UpgradeState.Kind.DAMAGE, running)
 	speed_button.disabled = not upgrades.can_purchase(UpgradeState.Kind.SPEED, running)
 	repair_button.disabled = not upgrades.can_purchase(UpgradeState.Kind.REPAIR, running)
+	var scout_cost := upgrades.next_cost(UpgradeState.Kind.SCOUT)
+	scout_button.text = "MAX" if scout_cost < 0 else "SCOUT %d" % scout_cost
+	scout_button.disabled = not upgrades.can_purchase(UpgradeState.Kind.SCOUT, running)
 
 func _draw() -> void:
 	draw_texture_rect(OCEAN_BACKGROUND, Rect2(Vector2.ZERO, size), false)
@@ -536,6 +561,7 @@ func _draw() -> void:
 	_draw_grid(grid_rect, showing_enemy)
 	_draw_grid_frame(preview_rect, true)
 	_draw_grid(preview_rect, not showing_enemy)
+	_draw_scout_status()
 	_draw_chamfer(Rect2(25, hint_label.position.y - 3, size.x - 50, 26), Color(0.02, 0.16, 0.25, 0.84), 5)
 	_draw_wood_panel(Rect2(14, size.y - 169, size.x - 28, 66))
 	_draw_sprite(SHIP_V2, Rect2(11, size.y - 189, 99, 99))
@@ -577,6 +603,23 @@ func _draw_upgrade_card(rect: Rect2, fill: Color, dark: Color, title: String, co
 	draw_rect(Rect2(rect.position + Vector2(47, 40), Vector2(rect.size.x - 55, 27)), Color(0.09, 0.13, 0.23, 0.58))
 	draw_texture_rect(COIN_SPRITE, Rect2(rect.position + Vector2(49, 45), Vector2(18, 18)), false)
 	draw_string(PIXEL_FONT, rect.position + Vector2(67, 61), "MAX" if cost < 0 else "%d" % cost, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color("ffedaa") if not button.disabled else Color("ffe4a0"))
+
+func _draw_scout_status() -> void:
+	var panel := Rect2(17, 184, 174, 77)
+	_draw_chamfer(panel.grow(2), INK, 7)
+	_draw_chamfer(panel, Color("173c59"), 5)
+	draw_string(PIXEL_FONT, panel.position + Vector2(9, 17), "SCOUTS", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color("ffde97"))
+	var colors := [Color("ffcd64"), Color("6ce9ef"), Color("ff9873")]
+	for route in ScoutFleet.ROUTE_NAMES.size():
+		var rows := battle.player_scouts.route_rows(route)
+		var ready := battle.player_scouts.cooldowns[route] <= 0.0
+		var caption := "%s  %d-%d  %s" % [ScoutFleet.ROUTE_NAMES[route].substr(0, 1), rows.x + 1, rows.y + 1, "READY" if ready else "%.0fs" % ceilf(battle.player_scouts.cooldowns[route])]
+		var y := panel.position.y + 35 + route * 14
+		draw_rect(Rect2(panel.position.x + 8, y - 9, 5, 9), colors[route])
+		draw_string(PIXEL_FONT, Vector2(panel.position.x + 18, y), caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color("e6f8ff") if ready else Color("a2b9c8"))
+	if battle.player_scouts.launch_remaining > 0.0:
+		var progress := 1.0 - battle.player_scouts.launch_remaining / battle.player_scouts.launch_interval
+		draw_rect(Rect2(panel.position.x + 7, panel.end.y - 4, (panel.size.x - 14) * progress, 3), Color("ffd76c"))
 
 func _draw_heart(center: Vector2, radius: float) -> void:
 	var red := Color("ff5d58")
@@ -659,6 +702,25 @@ func _draw_grid(area: Rect2, enemy_waters: bool) -> void:
 						var direction_y := 1.0 if py < rect.get_center().y else -1.0
 						draw_line(Vector2(px, py), Vector2(px + direction_x * corner, py), Color(1, 0.18, 0.12, pulse), 4)
 						draw_line(Vector2(px, py), Vector2(px, py + direction_y * corner), Color(1, 0.18, 0.12, pulse), 4)
+
+	_draw_scan_orders(area, enemy_waters)
+
+func _draw_scan_orders(area: Rect2, enemy_waters: bool) -> void:
+	var fleet := battle.player_scouts if enemy_waters else battle.enemy_scouts
+	var tile := area.size.x / battle.rules.grid_size
+	for mission in fleet.pending:
+		var cells: Array = mission["cells"]
+		var low: Vector2i = cells[0]
+		var high: Vector2i = cells[0]
+		for cell: Vector2i in cells:
+			low = Vector2i(mini(low.x, cell.x), mini(low.y, cell.y))
+			high = Vector2i(maxi(high.x, cell.x), maxi(high.y, cell.y))
+		var zone := Rect2(area.position + Vector2(low) * tile, Vector2(high - low + Vector2i.ONE) * tile)
+		var tint := Color("ffe275") if enemy_waters else Color("ff8a76")
+		draw_rect(zone.grow(-3), Color(tint, 0.12))
+		draw_rect(zone.grow(-3), tint, false, 3.0 if area == grid_rect else 1.5)
+		var progress := 1.0 - float(mission["remaining"]) / fleet.travel_time
+		draw_rect(Rect2(zone.position + Vector2(5, 5), Vector2((zone.size.x - 10) * progress, 4)), tint)
 
 func _draw_sprite(texture: Texture2D, destination: Rect2, tint: Color = Color.WHITE) -> void:
 	draw_texture_rect_region(texture, destination, sprite_regions[texture], tint)

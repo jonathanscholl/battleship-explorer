@@ -34,22 +34,22 @@ func _run() -> void:
 	var target: Vector2i = battle.enemy_grid.ship.sections.keys()[0]
 	_check(battle.player_knowledge.visible_kind(target) == GridModel.TileKind.HIDDEN, "Player view leaked ship")
 	_check(not battle.player_select_target(target), "Hidden ship was targetable")
-	_check(battle.player_discover(target), "Player could not discover ship")
+	_check(battle._discover(true, target), "Player could not discover ship")
 	_check(battle.player_knowledge.visible_kind(target) == GridModel.TileKind.SHIP, "Found ship not in knowledge")
-	_check(not battle.player_discover(target), "Repeated discovery accepted")
-	_check(not battle.player_discover(Vector2i(0, 0)), "Discovery cooldown ignored")
+	_check(not battle._discover(true, target), "Repeated discovery accepted")
+	_check(not battle.player_send_scout(Vector2i(-1, -1)), "Out-of-bounds scout accepted")
 	_check(battle.player_select_target(target), "Found ship could not be targeted")
 	var shots: Array = []
 	battle.shot_fired.connect(func(by_player: bool, cell: Vector2i, damage: int, section_hp: int, ship_hp: int) -> void: shots.append([by_player, cell, damage, section_hp, ship_hp]))
 	battle.advance(2.5)
-	_check(battle.enemy_knowledge.revealed_count() == 1, "Enemy discovery timer did not run")
-	_check(battle.player_knowledge.revealed_count() == 1, "Enemy discovery changed player knowledge")
+	_check(battle.enemy_knowledge.revealed_count() == 0, "Enemy scout launched early")
+	_check(battle.player_knowledge.revealed_count() == 1, "Enemy timing changed player knowledge")
 	_check(shots.size() == 0, "Cannon fired early")
 	battle.advance(2.5)
 	_check(shots.size() >= 1 and battle.enemy_grid.ship.get_total_hp() == 14, "Player auto-fire did not damage ship")
 	_check(battle.player_knowledge.visible_section_hp(target) == 4, "Shot did not update known section HP")
 	var second: Vector2i = battle.enemy_grid.ship.sections.keys()[1]
-	_check(battle.player_discover(second), "Cooldown did not finish")
+	_check(battle._discover(true, second), "Second test setup discovery failed")
 	_check(battle.player_select_target(second), "Manual target change failed")
 	_check(battle.player_cannon.target == second, "Cannon target did not change")
 	battle.player_cannon.damage = 9
@@ -63,13 +63,13 @@ func _run() -> void:
 	battle.set_paused(true)
 	battle.advance(100.0)
 	_check(battle.player_cannon.remaining == hold and battle.enemy_knowledge.revealed_count() == enemy_count, "Pause accumulated time")
-	_check(not battle.player_discover(Vector2i(0, 0)), "Discovery worked while paused")
+	_check(not battle.player_send_scout(Vector2i(0, 0)), "Scout worked while paused")
 	battle.set_paused(false)
 	battle.start_battle(42)
 	_check(battle.state == BattleModel.State.RUNNING and battle.player_knowledge.revealed_count() == 0, "Restart kept old state")
 	_check(battle.player_cannon.target == Vector2i(-1, -1) and battle.enemy_grid.ship.get_total_hp() == 15, "Restart kept old target or HP")
 	var quiet := BattleModel.new(13)
-	quiet.enemy_discovery_remaining = 1000.0
+	quiet.enemy_scout_decision_remaining = 1000.0
 	quiet.advance(5.0)
 	_check(quiet.player_grid.ship.get_total_hp() == 15, "Enemy attacked an undiscovered section")
 
@@ -107,7 +107,7 @@ func _run() -> void:
 	_check(loss.state == BattleModel.State.DEFEAT, "Enemy cannot win")
 
 	var full_win := BattleModel.new(21)
-	full_win.enemy_discovery_remaining = 1000.0
+	full_win.enemy_scout_decision_remaining = 1000.0
 	for cell in full_win.enemy_grid.ship.sections.keys():
 		full_win._discover(true, cell)
 	for i in 15:
